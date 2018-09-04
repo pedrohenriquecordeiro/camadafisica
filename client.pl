@@ -1,21 +1,32 @@
-#! /usr/bin/perl
- 
- # client.pl
- use IO::Socket::INET;
- print "Cliente Socket TCP em Perl";# Criando o socket cliente
- $client = IO::Socket::INET->new(
- 			PeerAddr=>"localhost",		# host do server
-                                     PeerPort  => "7000",# porta em que o server está listening
-                                     Timeout   => 60 );	# timeout de conexao
- 
- while(1)
- {
-     $msg = "Mensagem de teste!";
-     print "nEnviando: ",$msg, " ";
+#! /usr/bin/perl -w
+use 5.010;
+use warnings;
+use strict;
+use Socket;
 
-    if($client->send($msg))				#enviando a mensagem
-     {
-             print "-> Enviado com sucesso","n";
- 	sleep(5);
-     }
- }
+
+# inicializamos os parametros
+my $host = shift || '192.168.1.6';
+my $port = shift || 7890;
+my $proto = getprotobyname('tcp');
+
+
+# gera endereco da porta no local indicado pelo ip
+my $iaddr = inet_aton($host);
+my $paddr = sockaddr_in($port, $iaddr);
+
+
+# cria socket
+socket(SOCKET, PF_INET, SOCK_STREAM, $proto) or die "socket: $!";
+
+# tenta a conexao a partir do endereco da porta
+connect(SOCKET, $paddr) or die "connect: $!";
+
+my $message;
+while($message = <SOCKET>) {
+    print "$message";
+}
+
+#print SOCKET "Eu sou o cliente bro",
+
+close SOCKET or die "close: $!";
