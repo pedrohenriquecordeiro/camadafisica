@@ -1,51 +1,48 @@
-#!/usr/bin/perl -w			
- 
-use 5.010;
-use warnings;	
+#!/usr/bin/perl
+
 use strict;
-use Socket;
+use warnings;
+use IO::Socket::INET;
 
-my $port = shift || 7890;
-my $proto = getprotobyname('tcp');
 
-# cria um socket 
-socket(SERVER, PF_INET, SOCK_STREAM, $proto) or die "socket: $!";
+# eh necessario instalar esse modulo a partir do cpan
+use Net::Address::IP::Local;
 
-# configura o socket para se reutilizavel
-setsockopt(SERVER, SOL_SOCKET, SO_REUSEADDR, 1) or die "setsock: $!";
+my ($socket,$clientsocket,$serverdata,$clientdata);
 
-# obtem uma porta
-my $paddr = sockaddr_in($port, INADDR_ANY);
+#descobre o ip do maquina servidor
+my $address = eval{Net::Address::IP::Local->public_ipv4};
 
-# liga a porta ao socket, e comeca a escutar
-bind(SERVER, $paddr) or die "bind: $!";
+# cria o socket, com possibilidade de apenas um cliente conectado
+# Reuse eh 1 pois o socket pode ser reutilizavel
+$socket = new IO::Socket::INET (
 
-# comeca a escutar
-# SOMAXCONN eh o tamanho máximo da fila para conexões de clientes pendentes
-listen(SERVER, SOMAXCONN) or die "listen: $!";
+    LocalHost => $address,
+    LocalPort => '7878'  ,
+    Proto     => 'tcp'   ,
+    Listen    => 1       ,
+    Reuse     => 1              
 
-print "SERVER started on port $port\n";
+)or die "Erro: $! \n";
 
-# para cada conexao
-my $client_addr;
 
-# o servidor pode aceitar ou nao uma conexao
-# se uma conexao for aceita, um novo socket eh criado -> CLIENT
-if ($client_addr = accept(CLIENT, SERVER)) {
+print "Waiting for the Client.\n";
 
-    # retorna o número da porta e o ip do cliente em formato compactado 
-    my ($client_port, $client_ip) = sockaddr_in($client_addr);
-	
-	# converte o ip compactado em string(ASCII)
-    my $client_ipnum = inet_ntoa($client_ip);
-	
-    # log de dados da conexao
-    print "conectado : $client_ipnum]\n";
-	
-   # envia uma msg
-    print CLIENT "Eu sou o servidor bro",
-	
-}
+# aceita ou nao a conexao com um cliente
+$clientsocket = $socket->accept();
 
-#fecha conexao
-close CLIENT or die "close: $!";
+# mostra dados da conexao
+print   "Connected from : ", $clientsocket->peerhost();     
+print   "\nPort : ", $clientsocket->peerport(), "\n";
+
+# envia uma mensagem para o cliente
+$serverdata = "This is the Server speaking :)\n";
+print $clientsocket "$serverdata \n";
+
+# fica a espera de uma mensagem vinda cliente
+$clientdata = <$clientsocket>;
+print "Message received from Client : $clientdata\n";
+
+#fecha a conexao
+$socket->close();  
+
