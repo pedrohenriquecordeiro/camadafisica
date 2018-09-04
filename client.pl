@@ -1,20 +1,21 @@
-#!/usr/bin/perl
-#
-# The traditional first program.
+#! /usr/bin/perl
  
-# Strict and warnings are recommended.
-use strict;
-use warnings;
+ # client.pl
+ use IO::Socket::INET;
+ print "Cliente Socket TCP em Perl";# Criando o socket cliente
+ $client = IO::Socket::INET->new(
+ 			PeerAddr=>"localhost",		# host do server
+                                     PeerPort  => "7000",# porta em que o server está listening
+                                     Timeout   => 60 );	# timeout de conexao
+ 
+ while(1)
+ {
+     $msg = "Mensagem de teste!";
+     print "nEnviando: ",$msg, " ";
 
-if(@ARGV != 2){
-	print 'Uso: perl ' . $0 . ' [ip_servidor] [ip_cliente]';
-}
-my $ip_servidor = $ARGV[0] + 0;
-my $ip_cliente = $ARGV[1] + 0;
-my $port_number = 10001;
-
-print 'ip_servidor: ' . $ip_servidor . " \n";
-print 'ip_cliente: ' . $ip_cliente . " \n";
-print 'port_number: ' . $port_number . " \n";
-#como pegar numero da porta de um processo no windows
-#https://blogs.technet.microsoft.com/askperf/2008/08/26/what-port-is-that-service-using/
+    if($client->send($msg))				#enviando a mensagem
+     {
+             print "-> Enviado com sucesso","n";
+ 	sleep(5);
+     }
+ }

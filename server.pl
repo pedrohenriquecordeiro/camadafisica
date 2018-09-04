@@ -1,33 +1,22 @@
-#!/usr/bin/perl -w
-# Filename : server.pl
+ #! /usr/bin/perl			#Usado para chamar o interpretador do perl
+ 
+ # server.pl
+ use IO::Socket::INET;			#biblioteca que encapsula as funcionalidades do socket
+ print "Servidor Socket TCP em Perln";# Criando o socket
+ $server = IO::Socket::INET->new(
+ 		LocalAddr=>"localhost",	# host
+ 		LocalPort=>7000,	# porta que vai ficar em listening
+ 		Proto=>'tcp',		# protocolo
+ 		Listen=>10		# numero maximo de clientes conectados
+ 		);
 
-use strict;
-use Socket;
-
-# use port 7890 as default
-my $port = shift || 7890;
-my $proto = getprotobyname('tcp');
-my $server = "localhost";  # Host IP running the server
-
-# create a socket, make it reusable
-socket(SOCKET, PF_INET, SOCK_STREAM, $proto)
-   or die "Can't open socket $!\n";
-setsockopt(SOCKET, SOL_SOCKET, SO_REUSEADDR, 1)
-   or die "Can't set socket option to SO_REUSEADDR $!\n";
-
-# bind to a port, then listen
-bind( SOCKET, pack_sockaddr_in($port, inet_aton($server)))
-   or die "Can't bind to port $port! \n";
-
-listen(SOCKET, 5) or die "listen: $!";
-print "SERVER started on port $port\n";
-
-# accepting a connection
-my $client_addr;
-while ($client_addr = accept(NEW_SOCKET, SOCKET)) {
-   # send them a message, close connection
-   my $name = gethostbyaddr($client_addr, AF_INET );
-   print NEW_SOCKET "Smile from the server";
-   print "Connection recieved from $name\n";
-   close NEW_SOCKET;
-}
+$sock_client = $server->accept();	# aceitando o socket cliente
+ 
+ while( 1 )
+ {
+ 	$sock_client->recv($data,1024);	# recebendo os dados do cliente
+ 	if($data)
+ 	{
+ 		print "nRecebido: ", $data,"n";
+ 	}
+ }
