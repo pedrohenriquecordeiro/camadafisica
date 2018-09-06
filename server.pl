@@ -1,13 +1,19 @@
 #!/usr/bin/perl
 
+# se o parametro for <1> o servidor irá apenas enviar mensagens
+# se o parametro for <0> o servidor irá apenas receber mensagens
+
+use 5.010;
 use strict;
 use warnings;
 use IO::Socket::INET;
-
+use threads;
+use Time::HiRes ('sleep');
 
 # eh necessario instalar esse modulo a partir do cpan
 use Net::Address::IP::Local;
 
+# declara variaveis
 my ($socket,$clientsocket,$serverdata,$clientdata);
 
 #descobre o ip do maquina servidor
@@ -26,23 +32,122 @@ $socket = new IO::Socket::INET (
 )or die "Erro: $! \n";
 
 
-print "Waiting for the Client.\n";
+print "Esperando por um cliente.\n";
+
 
 # aceita ou nao a conexao com um cliente
 $clientsocket = $socket->accept();
 
+#envia uma mensagem ao cliente informando qual modo de operacao
+#a partir disso, o cliente vai se adaptar ao modo de operacao do servidor
+#
+#por exemplo, se o servidor for apenas enviar mensagens, 
+#o cliente apenas irareceber
+#
+print $clientsocket shift;
+
 # mostra dados da conexao
-print   "Connected from : ", $clientsocket->peerhost();     
-print   "\nPort : ", $clientsocket->peerport(), "\n";
+print   "Conectado com : ", $clientsocket->peerhost();     
+print   "\nNa porta : ", $clientsocket->peerport(), "\n\n";
 
-# envia uma mensagem para o cliente
-$serverdata = "This is the Server speaking :)\n";
-print $clientsocket "$serverdata \n";
+#define comportamento o script conforme o parametro de entrada shift
+if(shift eq 0){
 
-# fica a espera de uma mensagem vinda cliente
-$clientdata = <$clientsocket>;
-print "Message received from Client : $clientdata\n";
+	# fica a espera de mensagens
+	my $thread_1 = threads->create(\&esperando_mensagem,$clientsocket) 
+		or die "Erro na criacao da thread de espera";
+		
+}elsif(shift eq 1){
+	
+	# tem a possibilidade de envio de mensagens
+	my $thread_1 = threads->create(\&enviando_mensagem,$clientsocket) 
+		or die "Erro na criacao da thread de espera";
+	
+}else{
+	die "Parametro invalido";
+}
+
+# nao permite o encerramento do programa main enquanto a thread não finalizar
+$thread_1 ->join() or die "Erro na criacao de dependencia com o programa principal\n";
 
 #fecha a conexao
 $socket->close();  
+
+
+
+
+
+####################### SUBROUTINAS ############################
+sub esperando_mensagem{
+
+	# pega parametros passados
+	my @cs = @_ ;
+	my $clientsocket  = $cs[0];
+	
+	while(1){
+		
+		# espera uma mensagem
+		my $mensagem_do_cliente = <$clientsocket>;
+		
+		# se a mensagem for valida
+		if( defined $mensagem_do_cliente){
+		
+			if($mensagem_do_cliente eq "000x\n"){
+			
+				# se o cliente enviar 000x a conexao eh fechada
+				print $clientsocket "fechando conexao\n";
+				last;
+				
+			}else{
+			
+				# resposte o cliente
+				print $clientsocket "recebido\n";
+				
+				# mostra a mensagem recebida
+				print "Mensagem do cliente : $mensagem_do_cliente \n";
+				sleep(0.1);
+				
+			}
+			
+		}
+	}
+	threads->exit();
+	
+}
+
+
+sub enviando_mensagem{
+	
+	# pega parametros passados
+	my @s = @_ ;
+	my $clientsocket = $s[0];
+	
+	while(1){
+		
+		print "Digite uma mensagem para o servidor ...";
+		my $msg_para_cliente = <STDIN>;
+		chomp $msg_para_cliente;
+		
+		#envia a mensagem
+		print $socket "$msg_para_cliente \n";
+		
+		#resposta do servidor
+		my $mensagem_feedback = <$socket>;
+		
+		#avalia a mensagem
+		if(defined $mensagem_feedback){
+		
+			print "Mensagem do servidor $mensagem_feedback";
+			
+			if($mensagem_feedback  eq "000x\n"){
+			
+				# se o cliente enviar 000x a conexao eh fechada
+				last;
+				
+			}
+		}
+	}
+	threads->exit();
+}
+
 
