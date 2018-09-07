@@ -1,4 +1,4 @@
-# Camada Física 8-)
+# Camada Física
 
 Implementacao da camada fisica do trabalho pratico de Redes 1 - CEFETMG
 
