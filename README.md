@@ -1,6 +1,6 @@
 # Camada Física
 
-Implementacao da camada fisica do trabalho pratico de Redes 1 - CEFETMG
+Implementacao da Camada Física do Trabalho Prático de Redes 1 - CEFET-MG
 
   - Integrantes do grupo:
     + Marcos Henriques
