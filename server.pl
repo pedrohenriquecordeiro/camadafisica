@@ -16,6 +16,17 @@ use Net::Address::IP::Local;
 # declara variaveis
 my ($socket,$clientsocket,$serverdata,$clientdata);
 
+#declara variaveis
+my ($socket,$serverdata,$clientdata);
+
+#abre o arquivo
+my $filename = 'data.txt';
+open(my $fh, '<:encoding(UTF-8)', $filename)
+  or die "Não foi possível abrir o arquivo '$filename' $!";
+ 
+#salva o conteudo da primeiro linha em uma variavel
+my $data = <$fh>;
+
 #descobre o ip do maquina servidor
 my $address = eval{Net::Address::IP::Local->public_ipv4};
 
@@ -124,15 +135,12 @@ sub enviando_mensagem{
 	
 	while(1){
 		
-		print "Digite uma mensagem para o servidor ...";
-		my $msg_para_cliente = <STDIN>;
-		chomp $msg_para_cliente;
 		
 		#envia a mensagem
-		print $socket "$msg_para_cliente \n";
+		print $clientsocket "$data\n";
 		
 		#resposta do servidor
-		my $mensagem_feedback = <$socket>;
+		my $mensagem_feedback = <$clientsocket>;
 		
 		#avalia a mensagem
 		if(defined $mensagem_feedback){

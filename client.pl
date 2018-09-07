@@ -14,6 +14,15 @@ use Time::HiRes ('sleep');
 #declara variaveis
 my ($socket,$serverdata,$clientdata);
 
+#abre o arquivo
+my $filename = 'data.txt';
+open(my $fh, '<:encoding(UTF-8)', $filename)
+  or die "Não foi possível abrir o arquivo '$filename' $!";
+ 
+#salva o conteudo da primeiro linha em uma variavel
+my $data = <$fh>;
+
+
 #cria o socket
 $socket = new IO::Socket::INET (
   PeerHost => '192.168.1.6',
@@ -100,12 +109,8 @@ sub enviando_mensagem{
 	
 	while(1){
 		
-		print "Digite uma mensagem para o servidor ...";
-		my $msg_para_servidor = <STDIN>;
-		chomp $msg_para_servidor ;
-		
-		#envia a mensagem
-		print $socket "$msg_para_servidor \n";
+		#envia os dados
+		print $socket "$data\n";
 		
 		#resposta do servidor
 		my $mensagem_do_servidor = <$socket>;
