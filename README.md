@@ -8,6 +8,7 @@ Implementacao da camada fisica do trabalho pratico de Redes 1 - CEFETMG
     + Bernard
     + Thiago
 
+O Enunciado está neste __[link.](https://trello-attachments.s3.amazonaws.com/5aac0585353d9b7a8ee10339/5b72e4adef002152ddc21698/26bc3e2f09811b7583a04b4067fecf75/Trabalho_de_Implementa%C3%A7%C3%A3o_2.pdf)__
 O relatório a ser preenchido está neste __[link.](https://docs.google.com/document/d/13nwTYGULBXMB81_vo7_yVNxVpZ-V0RNZ0xpnynoLuqA/edit?usp=sharing)__
 
 ___
