@@ -7,6 +7,7 @@ use warnings;
 use IO::Socket::INET;
 use Time::HiRes ('sleep');
 
+
 # eh necessario instalar esse modulo a partir do cpan
 use Net::Address::IP::Local;
 
@@ -28,14 +29,14 @@ $socket = new IO::Socket::INET (
 
 )or die "Erro: $! \n";
 
-print "Esperando por um cliente.\n";
+#print "Esperando por um cliente.\n";
 
 # aceita ou nao a conexao com um cliente	
 $clientsocket = $socket->accept();
 
 # mostra dados da conexao
-print   "Conectado com : ", $clientsocket->peerhost();     
-print   "\nNa porta : ", $clientsocket->peerport(), "\n\n";
+#print   "Conectado com : ", $clientsocket->peerhost();     
+#print   "\nNa porta : ", $clientsocket->peerport(), "\n\n";
 
 # espera uma mensagem
 my $mensagem_do_cliente = <$clientsocket>;
@@ -45,13 +46,17 @@ if( defined $mensagem_do_cliente){
 	
 	# responte o cliente
 	print $clientsocket "1\n";
-	
-	# mostra a mensagem recebida
-	print "Mensagem do cliente : $mensagem_do_cliente \n";
 		
 }else{
-	die "Erro no receber o quadro";
+
+	die "Erro::quadro nao recebido";
+	
 }
 
 #fecha a conexao
 $socket->close();
+	
+
+#returno do script
+#esse retorno pode ser capturado dentro do arquivo php posteriormente
+print $mensagem_do_cliente;
