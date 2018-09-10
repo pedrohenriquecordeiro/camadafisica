@@ -15,7 +15,7 @@ use Net::Address::IP::Local;
 my ($socket,$clientsocket,$serverdata,$clientdata);
 
 #descobre o ip do maquina servidor
-my $address = eval{Net::Address::IP::Local->public_ipv4};
+my $address = '127.0.0.1';#eval{Net::Address::IP::Local->public_ipv4};
 
 # cria o socket, com possibilidade de apenas um cliente conectado
 # Reuse eh 1 pois o socket pode ser reutilizavel
@@ -46,6 +46,10 @@ if( defined $mensagem_do_cliente){
 	
 	# responte o cliente
 	print $clientsocket "1\n";
+	my $arquivo = 'data_from_c.txt';
+	open(my $fh, '>', $arquivo) or die "Não foi possível abrir o arquivo '$arquivo' $!";
+	print $fh $mensagem_do_cliente;
+	close $fh;
 		
 }else{
 

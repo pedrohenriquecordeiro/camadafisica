@@ -18,22 +18,34 @@ open(my $fh, '<:encoding(UTF-8)', $filename)
 #salva o conteudo da primeira linha em uma variavel
 my $data = <$fh>;
 
+
+my $serveraddr='127.0.0.1';
+my $clientaddr=eval{Net::Address::IP::Local->public_ipv4};
+
 #temos que filtrar o endereco ip que esta no arquivo
 #cria o socket
 $socket = new IO::Socket::INET (
-  PeerHost => '192.168.1.6',
+  PeerHost => '127.0.0.1',
   PeerPort => '7878'       ,
   Proto    => 'tcp'        
 ) or die "Erro : $!\n";
 
 #print "Conectado com o servidor.\n";
 
+
+my $preambulo = '10101010101010101010101010101010101010101010101010101010';
+my $start_frame = '10101011';
+my ($smac) = `arp -a $serveraddr` =~ /at\s+(\S+)\s+/;
+my ($cmac) = `arp -a $clientaddr` =~ /at\s+(\S+)\s+/;
+my $tipo = '0000000011111111';
+
+$data= $preambulo.$start_frame.$smac.$cmac.$tipo.$data;
+
 #envia o quadro
 my $thread_1 = threads->create(\&enviando_mensagem,$socket) 
 	or die "Erro na criacao da thread de espera";
 
-# nao permite o encerramento do programa main enquanto a thread não finalizar
-$thread_1 ->join() or die "Erro na criacao de dependencia com o programa principal\n";
+$thread_1 ->join() or die "Fechado com sucesso!\n";
 
 #fecha a conexao
 $socket->close();
@@ -55,7 +67,7 @@ sub enviando_mensagem{
 	# se menor ou igual a 4 ocorre colisao
 	#
 	
-	my $colisao;
+	my ($colisao,$time);
 	
 	while(1){
 		
