@@ -65,6 +65,8 @@ my $length_bin = sprintf unpack("b*",$length );
 # concatena o os campos da pdu
 $data_bin = $preambulo_bin.$start_frame_bin.$smac_bin.$cmac_bin.$length_bin.$data_file_bin;
 
+print "\n" . localtime(time) . "\n pdu :: <" . $data_bin . ">\n";
+
 
 #envia o quadro
 my $thread_1 = threads->create(\&enviando_mensagem,$socket,$data_in_bin) 
