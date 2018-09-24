@@ -10,23 +10,13 @@ use Time::HiRes ('sleep');
 #declara variaveis
 my ($socket,$serverdata,$clientdata);
 
-#abre o arquivo
-my $filename = 'data.txt';
-open(my $fh, '<:encoding(UTF-8)', $filename)
-  or die "Nao foi possivel abrir o arquivo '$filename' $!";
- 
-#salva o conteudo da primeira linha em uma variavel
-my $data_file = <$fh>;
-
-# conteudo de ate 1000 bytes
-# converte o conteudo para binario
-my $data_file_bin = sprintf unpack("b*",$data_file );
 
 # ESSA LINHA DEVE SER ALTERADA POSTERIORMENTE
 # POIS A CAMADA SUPERIOR ( CAMADA DE REDE ) QUE NOS DIRA
 # QUAL O IP DO DESTINO (SERVIDOR)
 my $serveraddr = '192.168.1.6';
 my $clientaddr = eval{Net::Address::IP::Local->public_ipv4};
+
 
 #cria o socket
 $socket = new IO::Socket::INET (
@@ -36,6 +26,9 @@ $socket = new IO::Socket::INET (
 ) or die "Erro : $!\n";
 
 
+
+
+########################### CRIANDO PDU ################################################################3
 # preambulo da pdu = 7 bytes
 my $preambulo = '10101010101010101010101010101010101010101010101010101010';
 my $preambulo_bin = sprintf unpack("b*",$preambulo);
@@ -65,28 +58,51 @@ my $cmac_bin = sprintf unpack("b*",$cmac );
 my $length = '0001111111110000';
 my $length_bin = sprintf unpack("b*",$length );
 
-# concatena o os campos da pdu
-my $data_bin = $preambulo_bin.$start_frame_bin.$mac_bin.$cmac_bin.$length_bin.$data_file_bin;
 
-print "\n" . localtime(time) . "\npdu :: <" . $data_bin . ">\n";
 
-#envia o quadro
-my $thread_1 = threads->create(\&enviando_mensagem,$socket) 
-	or die "Erro na criacao da thread de espera";
 
-$thread_1->join();
+
+####################### processo que entrara em loop######################3
+
+while(1){
+	#abre o arquivo
+	my $filename = 'data.txt';
+	open(my $fh, '<:encoding(UTF-8)', $filename)
+	  or die "Nao foi possivel abrir o arquivo '$filename' $!";
+	 
+	#salva o conteudo da primeira linha em uma variavel
+	my $data_file = <$fh>;
+
+	# converte o conteudo para binario
+	my $data_file_bin = sprintf unpack("b*",$data_file ,$data_file);
+
+	# concatena o os campos da pdu
+	my $data_bin = $preambulo_bin.$start_frame_bin.$mac_bin.$cmac_bin.$length_bin.$data_file_bin;
+
+	#envia o quadro
+	my $thread_1 = threads->create(\&enviando_mensagem,$socket) 
+		or die "Erro na criacao da thread de espera";
+
+	$thread_1->join();
+	
+	close $fh;
+
+}
 
 #fecha a conexao
 $socket->close();
+#FIM DO SCRIPT
 
 
 
-####################### SUBROUTINAS ############################
+
+###################################################### THREAD SUBROUTINA #####################################################
 sub enviando_mensagem{
 	
 	# pegar parametros passados
 	my @s = @_ ;
 	my $sk = $s[0];
+	my $data = $s[1];
 	
 	#
 	# nesse ponto simulamos uma colisao
@@ -115,18 +131,8 @@ sub enviando_mensagem{
 	}
 	
 	#envia os dados
-	print $sk "$data_bin\n";
-	
-	#resposta do servidor
-	my $mensagem_do_servidor = <$sk>;
-	
-	#avalia a mensagem
-	if(not defined $mensagem_do_servidor){
-	
-		# se servidor respondeu -> sai do loop e finaliza
-		die "erro no fadeback do servidor";
-		
-	}
+	print $sk "$data\n";
+
 	
 	threads->exit();
 }
