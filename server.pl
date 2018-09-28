@@ -41,15 +41,8 @@ while(1){
 	my $mensagem_do_cliente = <$clientsocket>;
 
 	# se a mensagem for valida
-	# aqui podemos controlar o continuamento do script
+	# obs : aqui podemos controlar o continuamento do script
 	if( defined $mensagem_do_cliente){
-		
-		# responte o cliente com um ok
-		print $clientsocket "1\n";
-		
-		if( $clientsocket eq "alguma palavra chave para interromper o fluxo do programa"){
-			last;
-		}
 		
 		#salva conteudo em um arquivo externo
 		my $arquivo = 'data_from_cliente.txt';

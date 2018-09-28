@@ -7,7 +7,8 @@ use warnings;
 use IO::Socket::INET;
 use Time::HiRes ('sleep');
 
-#declara variaveis
+
+# declara variaveis
 my ($socket,$serverdata,$clientdata);
 
 
@@ -26,9 +27,7 @@ $socket = new IO::Socket::INET (
 ) or die "Erro : $!\n";
 
 
-
-
-########################### CRIANDO PDU ################################################################3
+################################################### CRIANDO PDU #######################################################
 # preambulo da pdu = 7 bytes
 my $preambulo = '10101010101010101010101010101010101010101010101010101010';
 my $preambulo_bin = sprintf unpack("b*",$preambulo);
@@ -51,42 +50,44 @@ if($cmac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) 
 }
 my $cmac_bin = sprintf unpack("b*",$cmac );
 
-# dado a ser enviado 1000 bytes
-
-# tamanho de todo o quadro => 2 bytes
-# total => 1022 bytes -> 8176 bits
-my $length = '0001111111110000';
+# dado a ser enviado tera 46 bytes
+# tamanho do quadro
+# 7 + 1 + 6 + 6 + 46 = 66 bytes
+my $length = '00000000‭01000010‬‬';
 my $length_bin = sprintf unpack("b*",$length );
 
+my $pre_pdu = $preambulo_bin.$start_frame_bin.$mac_bin.$cmac_bin.$length_bin;
 
 
 
 
-####################### processo que entrara em loop######################3
-
+####################### processo que entrara em loop ######################3
 while(1){
+
 	#abre o arquivo
 	my $filename = 'data.txt';
 	open(my $fh, '<:encoding(UTF-8)', $filename)
 	  or die "Nao foi possivel abrir o arquivo '$filename' $!";
 	 
 	#salva o conteudo da primeira linha em uma variavel
+	#minimo de 46 bytes 
+	#conteudo efetivo : 19 Bytes - os outros 27 bytes serao composto por 0s
 	my $data_file = <$fh>;
+	
+	#fecha o arquivo
+	close $fh;
 
-	# converte o conteudo para binario
+	# converte o conteudo do arquivo para binario para binario
 	my $data_file_bin = sprintf unpack("b*",$data_file ,$data_file);
 
 	# concatena o os campos da pdu
-	my $data_bin = $preambulo_bin.$start_frame_bin.$mac_bin.$cmac_bin.$length_bin.$data_file_bin;
+	my $data_bin = $pre_pdu.$data_file_bin;
 
 	#envia o quadro
-	my $thread_1 = threads->create(\&enviando_mensagem,$socket) 
+	my $thread_1 = threads->create(\&enviando_mensagem,$socket,$data_bin) 
 		or die "Erro na criacao da thread de espera";
 
 	$thread_1->join();
-	
-	close $fh;
-
 }
 
 #fecha a conexao
@@ -96,7 +97,7 @@ $socket->close();
 
 
 
-###################################################### THREAD SUBROUTINA #####################################################
+###################################################### SUBROUTINA #####################################################
 sub enviando_mensagem{
 	
 	# pegar parametros passados
@@ -133,6 +134,5 @@ sub enviando_mensagem{
 	#envia os dados
 	print $sk "$data\n";
 
-	
 	threads->exit();
 }
