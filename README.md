@@ -8,7 +8,7 @@ Implementacao da Camada Física do Trabalho Prático de Redes 1 - CEFET-MG
     + Bernard
     + Thiago
 
-O Enunciado está neste __[link.](https://trello-attachments.s3.amazonaws.com/5aac0585353d9b7a8ee10339/5b72e4adef002152ddc21698/26bc3e2f09811b7583a04b4067fecf75/Trabalho_de_Implementa%C3%A7%C3%A3o_2.pdf)__
+O Enunciado está neste __[link.](https://docs.google.com/document/d/1O3cNM0T6gFNz9PeMYcnzbmBzEe8J7k34DaefJDSsv4A/edit)__
 O relatório a ser preenchido está neste __[link.](https://docs.google.com/document/d/13nwTYGULBXMB81_vo7_yVNxVpZ-V0RNZ0xpnynoLuqA/edit?usp=sharing)__
 
 ___
@@ -28,32 +28,28 @@ ___
 ___
 
 
-## Template Para Exibição de Código
+## Uso do Código
 
-Inline `code`
+Instale a linguagem `perl`
 
-Indented code
+Instale os pacotes necessários, através dos comandos:
 
-    // Some comments
-    line 1 of code
-    line 2 of code
-    line 3 of code
+    cpan
+    install IO::Socket::INET
+    install Time::HiRes
+    install Net::Address::IP::Local
 
 
-Block code "fences"
+Na máquina que será o servidor, rode o script "server.pl"
 
 ```
-Sample text here...
+perl server.pl
 ```
 
-Syntax highlighting
+Na máquina que será o cliente, rode o script "client.pl"
 
-``` js
-var foo = function (bar) {
-  return bar++;
-};
-
-console.log(foo(5));
+```
+perl client.pl
 ```
 
 
