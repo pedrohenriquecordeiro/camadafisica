@@ -4,7 +4,7 @@ use 5.010;
 use strict;
 use threads;
 use warnings;
-use IO::Socket::INET;
+use Sys::HostAddr;
 use Time::HiRes ('sleep');
 
 
@@ -15,9 +15,11 @@ my ($socket,$serverdata,$clientdata);
 # ESSA LINHA DEVE SER ALTERADA POSTERIORMENTE
 # POIS A CAMADA SUPERIOR ( CAMADA DE REDE ) QUE NOS DIRA
 # QUAL O IP DO DESTINO (SERVIDOR)
-my $serveraddr = '192.168.1.6';
-my $clientaddr = eval{Net::Address::IP::Local->public_ipv4};
+my $serveraddr = '192.168.1.7';
 
+# ip do localhost
+my $sysaddr = Sys::HostAddr->new();
+my $clientaddr = $sysaddr->first_ip();;
 
 #cria o socket
 $socket = new IO::Socket::INET (
@@ -36,15 +38,15 @@ my $preambulo_bin = sprintf unpack("b*",$preambulo);
 my $start_frame = '10101011';
 my $start_frame_bin = sprintf unpack("b*",$start_frame);
 
-# mac do servidor =  6 bytes
+# mac do destino =  6 bytes
 my $mac = `arp -a $serveraddr`;
 if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
 	$mac = $1;
 }
 my $mac_bin = sprintf unpack("b*",$mac);
 
-# mac do destino = 6 bytes
-my $cmac = `arp -a $clientaddr` =~ /at\s+(\S+)\s+/;
+# mac do remetente = 6 bytes
+my $cmac = `getmac`;
 if($cmac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
 	$cmac = $1;
 }
@@ -53,19 +55,18 @@ my $cmac_bin = sprintf unpack("b*",$cmac );
 # dado a ser enviado tera 46 bytes
 # tamanho do quadro
 # 7 + 1 + 6 + 6 + 46 = 66 bytes
-my $length = '00000000‭01000010‬‬';
+my $length = '00000000‭01000010';
 my $length_bin = sprintf unpack("b*",$length );
 
 my $pre_pdu = $preambulo_bin.$start_frame_bin.$mac_bin.$cmac_bin.$length_bin;
 
-
-
+print "running ...\n";
 
 ####################### processo que entrara em loop ######################3
 while(1){
 
 	#abre o arquivo
-	my $filename = 'data.txt';
+	my $filename = "data.txt";
 	open(my $fh, '<:encoding(UTF-8)', $filename)
 	  or die "Nao foi possivel abrir o arquivo '$filename' $!";
 	 
@@ -77,18 +78,21 @@ while(1){
 	#fecha o arquivo
 	close $fh;
 
-	# converte o conteudo do arquivo para binario para binario
-	my $data_file_bin = sprintf unpack("b*",$data_file ,$data_file);
+	# converte o conteudo do arquivo para binario 
+	my $data_file_bin = sprintf unpack("b*",$data_file);
 
 	# concatena o os campos da pdu
+	# corrigir aqui
 	my $data_bin = $pre_pdu.$data_file_bin;
 
 	#envia o quadro
 	my $thread_1 = threads->create(\&enviando_mensagem,$socket,$data_bin) 
-		or die "Erro na criacao da thread de espera";
+		or die "Erro no envio";
 
 	$thread_1->join();
 }
+
+print "stoped!\n";
 
 #fecha a conexao
 $socket->close();
@@ -114,7 +118,7 @@ sub enviando_mensagem{
 	#
 	
 	my ($colisao,$time);
-		
+	
 	#gera numero aleatoria de 0 a 9
 	$colisao = int(rand(10));
 	

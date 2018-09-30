@@ -33,25 +33,38 @@ $socket = new IO::Socket::INET (
 $clientsocket = $socket->accept() or die "Erro no inicio de conexao com o cliente";
 
 
+my($mensagem_do_cliente,$mensagem_do_cliente_bin);
+
+print "running ...\n";
 
 #################################### PROCESSO QUE IRA ENTRAR EM LOOP #######################################3
 while(1){
 
 	# espera uma mensagem
-	my $mensagem_do_cliente = <$clientsocket>;
+	$mensagem_do_cliente_bin = <$clientsocket>;
 
 	# se a mensagem for valida
 	# obs : aqui podemos controlar o continuamento do script
-	if( defined $mensagem_do_cliente){
+	if( defined $mensagem_do_cliente_bin){
+
+		# converte de binario para string
+		my $mensagem_do_cliente = sprintf pack("b*",$mensagem_do_cliente_bin);
+
+		# extrai da mensagem o conteudo efetivo
+		my $data = substr $mensagem_do_cliente , 117;
 		
 		#salva conteudo em um arquivo externo
 		my $arquivo = 'data_from_cliente.txt';
 		open(my $fh, '>', $arquivo) or die "Não foi possível abrir o arquivo '$arquivo' $!";
-		print $fh $mensagem_do_cliente;
+		print $fh $data;
 		close $fh;
 			
+	}else{
+		last;
 	}
 }
+
+print "stoped!\n";
 
 
 #fecha a conexao
