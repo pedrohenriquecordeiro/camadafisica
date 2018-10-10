@@ -4,7 +4,8 @@ use 5.010;
 use strict;
 use threads;
 use warnings;
-use Sys::HostAddr;
+#use Sys::HostAddr;
+use IO::Socket::INET;
 use Time::HiRes ('sleep');
 
 
@@ -15,11 +16,10 @@ my ($socket,$serverdata,$clientdata);
 # ESSA LINHA DEVE SER ALTERADA POSTERIORMENTE
 # POIS A CAMADA SUPERIOR ( CAMADA DE REDE ) QUE NOS DIRA
 # QUAL O IP DO DESTINO (SERVIDOR)
-my $serveraddr = '192.168.1.7';
-
+my $serveraddr = '192.168.1.4';
 # ip do localhost
-my $sysaddr = Sys::HostAddr->new();
-my $clientaddr = $sysaddr->first_ip();;
+#my $sysaddr = Sys::HostAddr->new();
+#my $clientaddr = $sysaddr->first_ip();;
 
 #cria o socket
 $socket = new IO::Socket::INET (
@@ -65,19 +65,34 @@ print "running ...\n";
 ####################### processo que entrara em loop ######################3
 while(1){
 
-	#abre o arquivo
-	my $filename = "data.txt";
-	open(my $fh, '<:encoding(UTF-8)', $filename)
-	  or die "Nao foi possivel abrir o arquivo '$filename' $!";
+	# espera uma mensagem - tela do servidor
+	my $mensagem_server = <$socket>;
+
+	if( defined $mensagem_server){
+
+		print "defined - display\n";
+		
+		#salva conteudo em um arquivo externo
+		my $image = 'message_slave.txt';
+		open(my $f_image, '>', $image) or die "Não foi possível abrir o arquivo '$image' $!";
+		print $f_image $mensagem_server;
+		close $f_image;
+	}
+
+	#abre um arquivo
+	my $file_master = "message_master.txt";
+	open(my $fh, '<:encoding(UTF-8)', $file_master)
+	  or die "Nao foi possivel abrir o arquivo '$file_master' $!";
 	 
 	#salva o conteudo da primeira linha em uma variavel
-	#minimo de 46 bytes 
-	#conteudo efetivo : 19 Bytes - os outros 27 bytes serao composto por 0s
+	#minimo de 46 bytes - posicao do mouse
 	my $data_file = <$fh>;
 	
 	#fecha o arquivo
 	close $fh;
 
+	print "send data\n";
+	
 	# converte o conteudo do arquivo para binario 
 	my $data_file_bin = sprintf unpack("b*",$data_file);
 
@@ -90,6 +105,9 @@ while(1){
 		or die "Erro no envio";
 
 	$thread_1->join();
+
+	
+
 }
 
 print "stoped!\n";
@@ -97,7 +115,6 @@ print "stoped!\n";
 #fecha a conexao
 $socket->close();
 #FIM DO SCRIPT
-
 
 
 
