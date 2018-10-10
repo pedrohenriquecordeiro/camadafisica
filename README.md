@@ -1,5 +1,12 @@
 # Camada Física
 
+>- **Camada Fisica:** https://github.com/pedrohenriquecordeiro/camadafisica
+>- **Camada Rede:** 
+>- **Camada Transporte:** 
+>- **Camada Aplicação:** https://github.com/thiagofigcosta/camadaaplicacao
+
+>- **Todas as camadas:** https://github.com/thiagofigcosta/camadas-rede
+
 Implementacao da Camada Física do Trabalho Prático de Redes 1 - CEFET-MG
 
   - Integrantes do grupo:
