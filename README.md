@@ -37,6 +37,8 @@ ___
 
 ## Uso do Código
 
+
+### Camada Física
 Instale a linguagem `perl`
 
 Instale os pacotes necessários, através dos comandos:
@@ -58,5 +60,30 @@ Na máquina que será o cliente, rode o script "client.pl"
 ```
 perl client.pl
 ```
+
+### Camada de aplicação
+Instale a linguagem `python` (versão 2.7) e os pacotes necessários, através dos comandos:
+
+    sudo apt-get install python
+	sudo apt-get install python-pip
+	sudo apt-get install python-tk
+	sudo apt-get install python-xlib
+	sudo apt-get install scrot
+	pip install -r requirements.txt
+
+
+Na máquina que será controlada, rode o script "controlled.py"
+
+```
+python controlled.py
+```
+
+Na máquina que irá controlar, rode o script "controller.py"
+
+```
+python controller.py
+```
+
+
 
 
