@@ -13,9 +13,9 @@ sub fixStrSize {
 	my ($str,$size) = @_;
 
 	if ($size<=length($str)) {
-		return substr($str,length($str)-size,size);
+		return substr($str,length($str)-$size,$size);
 	}else{
-		my $leadings=size-length($str);
+		my $leadings=$size-length($str);
 		return "0"x$leadings.$str;
 	}
 }
@@ -26,7 +26,7 @@ sub new {
 	my $class = @_;
 
 	my $self = {
-		preamble  => 0b10101010101010101010101010101010101010101010101010101010, # const 7 bytes
+		preamble  => 170, # const 7 bytes
 		startOfFrame => 0b10101011, # const 1 byte
 		scrAddr  => 0, # 6 bytes (MAC)
 		dstAddr  => 0, # 6 bytes (MAC)
@@ -59,39 +59,78 @@ sub new_toReceive {
 	my $i=0;
 	FOR:for my $c (split //, $bit) {
 		my $v = ord($c);
-		switch ($v) {
-			case  0 {$self->{preamble}=$v<<48;}
-			case  1 {$self->{preamble}=$self->{preamble}|($v<<40);}
-			case  2 {$self->{preamble}=$self->{preamble}|($v<<32);}
-			case  3 {$self->{preamble}=$self->{preamble}|($v<<24);}
-			case  4 {$self->{preamble}=$self->{preamble}|($v<<16);}
-			case  5 {$self->{preamble}=$self->{preamble}|($v<<8);}
-			case  6 {$self->{preamble}=$self->{preamble}|$v;}
-			case  7 {$self->{startOfFrame}=$v;}
-			case  8 {$self->{scrAddr}=$v<<40;}
-			case  9 {$self->{scrAddr}=$self->{scrAddr}|($v<<32);}
-			case 10 {$self->{scrAddr}=$self->{scrAddr}|($v<<24);}
-			case 11 {$self->{scrAddr}=$self->{scrAddr}|($v<<16);}
-			case 12 {$self->{scrAddr}=$self->{scrAddr}|($v<<8);}
-			case 13 {$self->{scrAddr}=$self->{scrAddr}|$v;}
-			case 14 {$self->{dstAddr}=$v<<40;}
-			case 15 {$self->{dstAddr}=$self->{dstAddr}|($v<<32);}
-			case 16 {$self->{dstAddr}=$self->{dstAddr}|($v<<24);}
-			case 17 {$self->{dstAddr}=$self->{dstAddr}|($v<<16);}
-			case 18 {$self->{dstAddr}=$self->{dstAddr}|($v<<8);}
-			case 19 {$self->{dstAddr}=$self->{dstAddr}|$v;}
-			case 20 {$self->{length}=$v<<8;}
-			case 21 {
-				$self->{length}=$self->{length}|$v;
-				my $datasize=$self->{length}-(56+8+48+48+16+32);
-				$self->{data}=substr($bit,22,$datasize);
-				$self->{cyclicRCheck}=(ord(substr($bit, 22+$datasize,1))<<24)|(ord(substr($bit, 22+$datasize+1,1))<<16)|(ord(substr($bit, 22+$datasize+2,1))<<8)|ord(substr($bit, 22+$datasize+3,1));
-				last FOR;
-			}
-			else{
+		if ($v==0){
+			if($v != 170){
 				# TODO error
-				print ("Invalid header"); 
+				print ("Invalid header (preamble)\n");
 			}
+		}elsif($v==1){
+			if($v != 170){
+				# TODO error
+				print ("Invalid header (preamble)\n");
+			}
+		}elsif($v==2){
+			if($v != 170){
+				# TODO error
+				print ("Invalid header (preamble)\n");
+			}
+		}elsif($v==3){
+			if($v != 170){
+				# TODO error
+				print ("Invalid header (preamble)\n");
+			}
+		}elsif($v==4){
+			if($v != 170){
+				# TODO error
+				print ("Invalid header (preamble)\n");
+			}
+		}elsif($v==5){
+			if($v != 170){
+				# TODO error
+				print ("Invalid header (preamble)\n");
+			}
+		}elsif($v==6){
+			if($v != 170){
+				# TODO error
+				print ("Invalid header (preamble)\n");
+			}
+		}elsif($v==7){
+			$self->{startOfFrame}=$v;
+		}elsif($v==8){
+			$self->{scrAddr}=$v<<40;
+		}elsif($v==9){
+			$self->{scrAddr}=$self->{scrAddr}|($v<<32);
+		}elsif($v==10){
+			$self->{scrAddr}=$self->{scrAddr}|($v<<24);
+		}elsif($v==11){
+			$self->{scrAddr}=$self->{scrAddr}|($v<<16);
+		}elsif($v==12){
+			$self->{scrAddr}=$self->{scrAddr}|($v<<8);
+		}elsif($v==13){
+			$self->{scrAddr}=$self->{scrAddr}|$v;
+		}elsif($v==14){
+			$self->{dstAddr}=$v<<40;
+		}elsif($v==15){
+			$self->{dstAddr}=$self->{dstAddr}|($v<<32);
+		}elsif($v==16){
+			$self->{dstAddr}=$self->{dstAddr}|($v<<24);
+		}elsif($v==17){
+			$self->{dstAddr}=$self->{dstAddr}|($v<<16);
+		}elsif($v==18){
+			$self->{dstAddr}=$self->{dstAddr}|($v<<8);
+		}elsif($v==19){
+			$self->{dstAddr}=$self->{dstAddr}|$v;
+		}elsif($v==20){
+			$self->{length}=$v<<8;
+		}elsif($v==21){
+			$self->{length}=$self->{length}|$v;
+			my $datasize=$self->{length}-(56+8+48+48+16+32);
+			$self->{data}=substr($bit,22,$datasize);
+			$self->{cyclicRCheck}=(ord(substr($bit, 22+$datasize,1))<<24)|(ord(substr($bit, 22+$datasize+1,1))<<16)|(ord(substr($bit, 22+$datasize+2,1))<<8)|ord(substr($bit, 22+$datasize+3,1));
+			last FOR;
+		}else{
+			# TODO error
+			print ("Invalid header");
 		}
 		$i++;
 	}
@@ -106,7 +145,13 @@ sub new_toReceive {
 sub toString {
 	my $self = shift;
 
-	my $str=fixStrSize(sprintf("%b", $self->{preamble}), 56);
+	my $str=fixStrSize(sprintf("%b", $self->{preamble}), 8);
+	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
+	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
+	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
+	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
+	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
+	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
 	$str.=fixStrSize(sprintf("%b", $self->{startOfFrame}), 8);
 	$str.=fixStrSize(sprintf("%b", $self->{scrAddr}), 48);
 	$str.=fixStrSize(sprintf("%b", $self->{dstAddr}), 48);
@@ -131,7 +176,7 @@ sub toBin {
 	$bit.=chr($self->{data});
 	$bit.=chr($self->{cyclicRCheck}>>24&0b11111111).chr($self->{cyclicRCheck}>>16&0b11111111).chr($self->{cyclicRCheck}>>8&0b11111111).chr($self->{cyclicRCheck}&0b11111111);
 	if (length($self->{data})<48){
-		$str.= chr(0)x(48-length($self->{data}));
+		$bit.= chr(0)x(48-length($self->{data}));
 	}
 	return $bit;
 }
@@ -167,31 +212,32 @@ sub new {
 		mac  => $class->getMAC(),
 		sockets => {},
 		socket => 0,
-		isServer => 0,
+		isServer => -1,
 	};
 	my $port=666;
-	print ("-------------------------------------");
-	print ("-Bem vindo ao Protocolo Mickey Mouse-");
-	print ("-------------------------------------");
+	my $opt;
+	print ("-------------------------------------\n");
+	print ("-Bem vindo ao Protocolo Mickey Mouse-\n");
+	print ("-------------------------------------\n");
 	do{
-		print ("Digite uma das opções abaixo:");
-		print ("S - Camada fisica se comportando como servidor*");
-		print ("C - Camada fisica se comportando como cliente");
-		print ("E - Sair");
-		print ("*Apenas um dispositivo da rede deve ser servidor!");
+		print ("Digite uma das opções abaixo:\n");
+		print ("S - Camada fisica se comportando como servidor*\n");
+		print ("C - Camada fisica se comportando como cliente\n");
+		print ("E - Sair\n");
+		print ("*Apenas um dispositivo da rede deve ser servidor!\n");
 		my $line= <STDIN>;
 		chomp $line;
-		my $opt=uc(substr($line,0,1))
-		if ($opt -e "S") {
+		$opt=uc(substr($line,0,1));
+		if ($opt eq "S") {
 			$self->{isServer}=1;
-		}elsif ($opt -e "C"){
+		}elsif ($opt eq "C"){
 			$self->{isServer}=0;
-		}elsif ($opt -e "E"){
+		}elsif ($opt eq "E"){
 			exit 0;
 		}else{
-			print ("Opção invalida");
+			print ("Opção invalida\n");
 		}
-	}while ($opt -ne "S" or $opt -ne "C");
+	}while ($self->{isServer}<-1);
 
 	if ($self->{isServer}){
 		my $so="$^O\n";
@@ -210,7 +256,7 @@ sub new {
 			Reuse     => 1
 		)or die "Erro: $! \n";
 	}else{
-		print "Digite o ip do socket servidor: ";
+		print "Digite o ip do socket servidor: \n";
 		my $socketIp = <STDIN>;
 		chomp $socketIp;
 		$self->{socket}=new IO::Socket::INET (
@@ -231,16 +277,16 @@ sub arp {
 	if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
 		$mac=$1;
 	}
-	my $mac_bin = 0;
+	my $mac_int = 0;
 	my $offset=44;
 	for my $c (split //, $mac) {
 		if ($c ne ":"){
 			my $v = hex($c);
-			$mac_bin=$mac_bin|($v<<$offset);
+			$mac_int=$mac_int|($v<<$offset);
 			$offset-=4;
 		}
 	}
-	return $mac_bin;
+	return $mac_int;
 }
 
 sub getMAC {
@@ -258,16 +304,16 @@ sub getMAC {
 	}else{
 		$mac = "00:00:00:00:00:00";
 	}
-	my $mac_bin = 0;
+	my $mac_int = 0;
 	my $offset=44;
 	for my $c (split //, $mac) {
 		if ($c ne ":"){
 			my $v = hex($c);
-			$mac_bin=$mac_bin|($v<<$offset);
+			$mac_int=$mac_int|($v<<$offset);
 			$offset-=4;
 		}
 	}
-	return $mac_bin;
+	return $mac_int;
 }
 
 sub read_file{
@@ -275,7 +321,7 @@ sub read_file{
 
 	my ($read, $data);
 	try {
-		open($read, '<:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!";
+		open($read, '<:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
 		$data= <$read>;
 		close $read;
 	} catch {};
@@ -287,8 +333,8 @@ sub write_file{
 
 	my $write;
 	try {
-		open($write, '>:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!";
-		print $write $data;
+		open($write, '>:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
+		print $write "$data\n";
 		close $write;
 	} catch {};
 }
@@ -306,10 +352,12 @@ sub socketSend {
 
 	if ($self->{isServer}) {
 		if (exists $self->{sockets}{$dst}){
-			print $self->{sockets}{$dst} "$data\n";
+			my $sk=$self->{sockets}{$dst};
+			print $sk "$data\n";
 		}
 	}else{
-		print $self->{socket} "$data\n";
+		my $sk=$self->{socket};
+		print $sk "$data\n";
 	}
 	threads->exit();
 }
@@ -325,7 +373,7 @@ sub forwardBit {
 				unlink "packet_out.pdu";
 				my $dstMAC=$self->arp($dstIP);
 				my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
-				my $thread = threads->create(\&socketSend,$self,$dstMAC,$bit->toBin()) or die "Erro no envio";
+				my $thread = threads->create(\&socketSend,$self,$dstMAC,$bit->toBin()) or die "Erro no envio\n";
 				$thread->join();
 			}
 		}catch{};
@@ -356,7 +404,8 @@ sub receiveMessage {
 		}else{
 			if ($self->{isServer}) {
 				if (exists $self->{sockets}{$bit->{dstAddr}}){
-					print $self->{sockets}{$bit->{dstAddr}} "$data\n";
+					my $sk=$self->{sockets}{$bit->{dstAddr}};
+					print $sk "$data\n";
 				}
 			}
 		}
@@ -368,10 +417,11 @@ sub receiveClients {
 	my $self = shift;
 	
 	while (1) {
-		my $client=$self->{socket}->accept();
-		my $client_mac=$self->arp($client->peerhost());
+		my $sk=$self->{socket};
+		my $client=$sk->accept();
+		my $client_mac=$self->arp($client->peeraddr);
 		$self->{sockets}{$client_mac}=$client;
-		my $thread = threads->create(\&receiveMessage,$self,$client) or die "Erro no recebimento";
+		my $thread = threads->create(\&receiveMessage,$self,$client) or die "Erro no recebimento\n";
 		$thread->join();
 	}
 	threads->exit();
@@ -381,27 +431,32 @@ sub run {
 	my $self = shift;
 
 	if ($self->{isServer}){
-		my $thread_rcvCli = threads->create(\&receiveClients,$self) or die "Erro no receber clientes";
+		my $thread_rcvCli = threads->create(\&receiveClients,$self) or die "Erro no receber clientes\n";
 		$thread_rcvCli->join();
 	}
-	my $thread_bwBit = threads->create(\&backwardBit,$self) or die "Erro no propagar bit para camada de cima";
+	my $thread_bwBit = threads->create(\&backwardBit,$self) or die "Erro no propagar bit para camada de cima\n";
 	$thread_bwBit->join();
-	my $thread_fwBit = threads->create(\&forwardBit,$self) or die "Erro no propagar bit pela rede";
+	my $thread_fwBit = threads->create(\&forwardBit,$self) or die "Erro no propagar bit pela rede\n";
 	$thread_fwBit->join();
-	
+	my $opt;
 	do{
-		print ("Digite 'Q' para encerrar a aplicação");
+		print ("Digite 'Q' para encerrar a aplicação\n");
 		my $line= <STDIN>;
 		chomp $line;
-		my $opt=uc(substr($line,0,1))
-		if ($opt -e "Q") {
+		$opt=uc(substr($line,0,1));
+		if ($opt eq "Q") {
 			exit 0;
 		}else{
-			print ("Opção invalida");
+			print ("Opção invalida\n");
 		}
-	}while ($opt -ne "Q");
+	}while (1);
 }
+
+1;
 
 package Main;
 
-PhysicalLayer->new()->run();
+my $pl=PhysicalLayer->new();
+$pl->run();
+
+1;
