@@ -47,14 +47,7 @@ Instale os pacotes necessários, através dos comandos:
     install Net::Address::IP::Local
 
 
-Na máquina que será o servidor, rode o script "server.pl"
-
+Para executar basta rodar os comandos:
 ```
-perl server.pl
-```
-
-Na máquina que será o cliente, rode o script "client.pl"
-
-```
-perl client.pl
+	perl physical.pl
 ```
