@@ -34,6 +34,8 @@ sub new_toSend {
 	$self->{scrAddr} = $scrAddr; 
 	$self->{dstAddr} = $dstAddr;
 	$self->{data} = $data; 
+	$self->{length} = length($data)+(56+8+48+48+16+32);
+	$self->genCheckSum();
 
 	return $self;
 }
@@ -75,14 +77,17 @@ sub new_toReceive {
 				$self->{cyclicRCheck}=(ord(substr($bit, 22+$datasize,1))<<24)|(ord(substr($bit, 22+$datasize+1,1))<<16)|(ord(substr($bit, 22+$datasize+2,1))<<8)|ord(substr($bit, 22+$datasize+3,1));
 				last FOR;
 			}
-			else    { 
+			else{
+				# TODO error
 				print ("Invalid header"); 
 			}
 		}
-
 		$i++;
 	}
-
+	if (!checkSum()){
+		# TODO error
+		print ("Invalid checksum");
+	}
 	return $self;
 }
 
@@ -112,7 +117,7 @@ sub toBin {
 	$bit.=chr($self->{scrAddr}>>40&0b11111111).chr($self->{scrAddr}>>32&0b11111111).chr($self->{scrAddr}>>24&0b11111111).chr($self->{scrAddr}>>16&0b11111111).chr($self->{scrAddr}>>8&0b11111111).chr($self->{scrAddr}&0b11111111);
 	$bit.=chr($self->{dstAddr}>>40&0b11111111).chr($self->{dstAddr}>>32&0b11111111).chr($self->{dstAddr}>>24&0b11111111).chr($self->{dstAddr}>>16&0b11111111).chr($self->{dstAddr}>>8&0b11111111).chr($self->{dstAddr}&0b11111111);
 	$bit.=chr($self->{length}>>8&0b11111111).chr($self->{length}&0b11111111);
-	$bit.=chr($self->{data};
+	$bit.=chr($self->{data});
 	$bit.=chr($self->{cyclicRCheck}>>24&0b11111111).chr($self->{cyclicRCheck}>>16&0b11111111).chr($self->{cyclicRCheck}>>8&0b11111111).chr($self->{cyclicRCheck}&0b11111111);
 	if (length($self->{data})<48){
 		$str.= chr(0)x(48-length($self->{data}));
@@ -120,13 +125,27 @@ sub toBin {
 	return $bit;
 }
 
+sub toData {
+	my $self = shift;
+
+	my $data=$self->{data};
+
+	return $data;
+}
+
+sub genCheckSum {
+	my $self = shift;
+	# TODO implement
+}
+
+sub checkSum {
+	my $self = shift;
+	# TODO implement
+	return 0;
+}
 
 1;
 
 
 package PhysicalLayer;
 
-my $bite=Bit->new_toSend(10,20,"copa");
-print ($bite->{scrAddr});
-print ($bite->{dstAddr});
-print ($bite->{data});
