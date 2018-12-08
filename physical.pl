@@ -161,15 +161,39 @@ sub checkSum {
 package PhysicalLayer;
 
 sub new {
-	my ($class, $isServer) = @_;
+	my ($class) = @_;
 
 	my $self = {
 		mac  => $class->getMAC(),
 		sockets => {},
 		socket => 0,
+		isServer => 0,
 	};
 	my $port=666;
-	if ($isServer){
+	print ("-------------------------------------");
+	print ("-Bem vindo ao Protocolo Mickey Mouse-");
+	print ("-------------------------------------");
+	do{
+		print ("Digite uma das opções abaixo:");
+		print ("S - Camada fisica se comportando como servidor*");
+		print ("C - Camada fisica se comportando como cliente");
+		print ("E - Sair");
+		print ("*Apenas um dispositivo da rede deve ser servidor!");
+		my $line= <STDIN>;
+		chomp $line;
+		my $opt=uc(substr($line,0,1))
+		if ($opt -e "S") {
+			$self->{isServer}=1;
+		}elsif ($opt -e "C"){
+			$self->{isServer}=0;
+		}elsif ($opt -e "E"){
+			exit 0;
+		}else{
+			print ("Opção invalida");
+		}
+	}while ($opt -ne "S" or $opt -ne "C");
+
+	if ($self->{isServer}){
 		my $so="$^O\n";
 		my $socketIp="127.0.0.1";
 		if(index($so, "linux") != -1) {
@@ -279,34 +303,105 @@ sub socketSend {
 		sleep($time); 				# espera um tempo aleatorio
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
-	print $self->{socket} "$data\n";
+
+	if ($self->{isServer}) {
+		if (exists $self->{sockets}{$dst}){
+			print $self->{sockets}{$dst} "$data\n";
+		}
+	}else{
+		print $self->{socket} "$data\n";
+	}
 	threads->exit();
 }
 
 sub forwardBit {
 	my $self = shift;
-
-	try{
-		if (-e "packet_out.pdu" && -e "routed_ip.zap"){
-			my $dstIP=$self->read_file("routed_ip.zap","encoding(UTF-8)");
-			my $packet=$self->read_file("packet_out.pdu","raw");
-			unlink "routed_ip.zap";
-			unlink "packet_out.pdu";
-			my $dstMAC=$self->arp($dstIP);
-			my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
-			my $thread = threads->create(\&socketSend,$self,$dstMAC,$bit) or die "Erro no envio";
-			$thread->join();
-		}
-	}catch{};
+	while (1){
+		try{
+			if (-e "packet_out.pdu" && -e "routed_ip.zap"){
+				my $dstIP=$self->read_file("routed_ip.zap","encoding(UTF-8)");
+				my $packet=$self->read_file("packet_out.pdu","raw");
+				unlink "routed_ip.zap";
+				unlink "packet_out.pdu";
+				my $dstMAC=$self->arp($dstIP);
+				my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
+				my $thread = threads->create(\&socketSend,$self,$dstMAC,$bit->toBin()) or die "Erro no envio";
+				$thread->join();
+			}
+		}catch{};
+	}
+	threads->exit();
 }
 
 
 sub backwardBit {
-	my $self = shift;
-	#route to other sockets
+	my ($self,$bit) = @_;
+
+	while (1){
+		if (!-e "bit_out.pdu"){
+			write_file("bit_out.pdu",$bit->toData(),"raw");
+		}
+	}
+	threads->exit();
+}
+
+sub receiveMessage {
+	my ($self,$sock) = @_;
+	
+	while (1) {
+		my $data=<$sock>;
+		my $bit=Bit->new_toReceive($data);
+		if ($bit->{dstAddr} == $self->{mac}){
+			$self->backwardBit($bit);
+		}else{
+			if ($self->{isServer}) {
+				if (exists $self->{sockets}{$bit->{dstAddr}}){
+					print $self->{sockets}{$bit->{dstAddr}} "$data\n";
+				}
+			}
+		}
+	}
+	threads->exit();
 }
 
 sub receiveClients {
 	my $self = shift;
-	#add to hash
+	
+	while (1) {
+		my $client=$self->{socket}->accept();
+		my $client_mac=$self->arp($client->peerhost());
+		$self->{sockets}{$client_mac}=$client;
+		my $thread = threads->create(\&receiveMessage,$self,$client) or die "Erro no recebimento";
+		$thread->join();
+	}
+	threads->exit();
 }
+
+sub run {
+	my $self = shift;
+
+	if ($self->{isServer}){
+		my $thread_rcvCli = threads->create(\&receiveClients,$self) or die "Erro no receber clientes";
+		$thread_rcvCli->join();
+	}
+	my $thread_bwBit = threads->create(\&backwardBit,$self) or die "Erro no propagar bit para camada de cima";
+	$thread_bwBit->join();
+	my $thread_fwBit = threads->create(\&forwardBit,$self) or die "Erro no propagar bit pela rede";
+	$thread_fwBit->join();
+	
+	do{
+		print ("Digite 'Q' para encerrar a aplicação");
+		my $line= <STDIN>;
+		chomp $line;
+		my $opt=uc(substr($line,0,1))
+		if ($opt -e "Q") {
+			exit 0;
+		}else{
+			print ("Opção invalida");
+		}
+	}while ($opt -ne "Q");
+}
+
+package Main;
+
+PhysicalLayer->new()->run();
