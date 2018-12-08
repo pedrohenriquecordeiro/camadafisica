@@ -6,7 +6,7 @@ use strict;
 use threads;
 use warnings;
 use IO::Socket::INET;
-use Time::HiRes ('sleep');
+use Time::HiRes('sleep');
 use Try::Tiny;
 use Net::Address::IP::Local; # eh necessario instalar esse modulo a partir do cpan
 
@@ -33,7 +33,16 @@ my $fsend_data;
 my $fsend_data_bin;
 
 ######### cria o socket, com possibilidade de apenas um cliente conectado (Reuse eh 1 pois o socket pode ser reutilizavel)
-my $address = eval{Net::Address::IP::Local->public_ipv4}; #descobre o ip da maquina servidor
+my $address;
+my $so =  "$^O\n";
+if(index($so, "linux") != -1) {
+    $address = eval{Net::Address::IP::Local->public_ipv4}; #descobre o ip da maquina servidor
+}elsif(index($so,"Win") != -1){
+	$address = Net::Address::IP::Local->public;
+}else{
+	$address = "127.0.0.1";
+}
+
 print "Starting server [ip:".$address." port:".$port."]...\n";
 $socket = new IO::Socket::INET ( 
 	LocalHost => $address,
@@ -61,8 +70,8 @@ if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /
 my $mac_bin = sprintf unpack("b*",$mac);
 
 # mac do remetente = 6 bytes
-my $so =  "$^O\n";
-my $cmac = "00:00:00:00:00:00";
+$so =  "$^O\n";
+my $cmac;
 if(index($so, "linux") != -1) {
     $cmac = substr `cat /sys/class/net/*/address`,0,17;
 }elsif(index($so,"Win") != -1){
@@ -70,6 +79,8 @@ if(index($so, "linux") != -1) {
 	if($cmac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
 		$cmac = $1;
 	}
+}else{
+	$cmac = "00:00:00:00:00:00";
 }
 my $cmac_bin = sprintf unpack("b*",$cmac );
 
