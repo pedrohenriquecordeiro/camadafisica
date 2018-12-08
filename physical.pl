@@ -1,3 +1,14 @@
+#!/usr/bin/perl
+
+use 5.010;
+use strict;
+use threads;
+use warnings;
+use IO::Socket::INET;
+use Time::HiRes('sleep');
+use Try::Tiny;
+use Net::Address::IP::Local;
+
 sub fixStrSize {
 	my ($str,$size) = @_;
 
@@ -12,7 +23,7 @@ sub fixStrSize {
 package Bit;
 
 sub new {
-	my ($class, $args) = @_;
+	my $class = @_;
 
 	my $self = {
 		preamble  => 0b10101010101010101010101010101010101010101010101010101010, # const 7 bytes
@@ -84,7 +95,7 @@ sub new_toReceive {
 		}
 		$i++;
 	}
-	if (!checkSum()){
+	if (!$self->checkSum()){
 		# TODO error
 		print ("Invalid checksum");
 	}
@@ -149,3 +160,153 @@ sub checkSum {
 
 package PhysicalLayer;
 
+sub new {
+	my ($class, $isServer) = @_;
+
+	my $self = {
+		mac  => $class->getMAC(),
+		sockets => {},
+		socket => 0,
+	};
+	my $port=666;
+	if ($isServer){
+		my $so="$^O\n";
+		my $socketIp="127.0.0.1";
+		if(index($so, "linux") != -1) {
+			$socketIp=eval{Net::Address::IP::Local->public_ipv4};
+		}elsif(index($so,"Win") != -1){
+			$socketIp=Net::Address::IP::Local->public;
+		}
+		print "Starting server [ip:".$socketIp." port:".$port."]...\n";
+		$self->{socket}=new IO::Socket::INET ( 
+			LocalHost => $socketIp,
+			LocalPort => $port,
+			Proto     => 'tcp',
+			# Listen    => 10,
+			Reuse     => 1
+		)or die "Erro: $! \n";
+	}else{
+		print "Digite o ip do socket servidor: ";
+		my $socketIp = <STDIN>;
+		chomp $socketIp;
+		$self->{socket}=new IO::Socket::INET (
+			PeerHost => $socketIp,
+			PeerPort => $port,
+			Proto    => 'tcp'
+		) or die "[Erro]$!\n";
+	}
+	
+
+	return bless $self, $class;
+}
+
+sub arp {
+	my ($class, $ip) = @_;
+
+	my $mac = `arp -a $ip`;
+	if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
+		$mac=$1;
+	}
+	my $mac_bin = 0;
+	my $offset=44;
+	for my $c (split //, $mac) {
+		if ($c ne ":"){
+			my $v = hex($c);
+			$mac_bin=$mac_bin|($v<<$offset);
+			$offset-=4;
+		}
+	}
+	return $mac_bin;
+}
+
+sub getMAC {
+	my $class = shift;
+
+	my $so =  "$^O\n";
+	my $mac;
+	if(index($so, "linux") != -1) {
+		$mac = substr `cat /sys/class/net/*/address`,0,17;
+	}elsif(index($so,"Win") != -1){
+		$mac = `getmac`;
+		if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
+			$mac = $1;
+		}
+	}else{
+		$mac = "00:00:00:00:00:00";
+	}
+	my $mac_bin = 0;
+	my $offset=44;
+	for my $c (split //, $mac) {
+		if ($c ne ":"){
+			my $v = hex($c);
+			$mac_bin=$mac_bin|($v<<$offset);
+			$offset-=4;
+		}
+	}
+	return $mac_bin;
+}
+
+sub read_file{
+	my ($class, $file, $encoding) = @_;
+
+	my ($read, $data);
+	try {
+		open($read, '<:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!";
+		$data= <$read>;
+		close $read;
+	} catch {};
+	return $data;
+}
+
+sub write_file{
+	my ($class, $file, $data, $encoding) = @_;
+
+	my $write;
+	try {
+		open($write, '>:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!";
+		print $write $data;
+		close $write;
+	} catch {};
+}
+
+sub socketSend {
+	my ($self, $dst, $data) = @_;
+	
+	my ($colisao,$time); 
+	$colisao = int(rand(10)); 		# colisao se o numero for >= 4
+	while($colisao le 4){ 			#ocorreu colisao
+		$time = int(rand(10)/10);
+		sleep($time); 				# espera um tempo aleatorio
+		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
+	}	
+	print $self->{socket} "$data\n";
+	threads->exit();
+}
+
+sub forwardBit {
+	my $self = shift;
+
+	try{
+		if (-e "packet_out.pdu" && -e "routed_ip.zap"){
+			my $dstIP=$self->read_file("routed_ip.zap","encoding(UTF-8)");
+			my $packet=$self->read_file("packet_out.pdu","raw");
+			unlink "routed_ip.zap";
+			unlink "packet_out.pdu";
+			my $dstMAC=$self->arp($dstIP);
+			my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
+			my $thread = threads->create(\&socketSend,$self,$dstMAC,$bit) or die "Erro no envio";
+			$thread->join();
+		}
+	}catch{};
+}
+
+
+sub backwardBit {
+	my $self = shift;
+	#route to other sockets
+}
+
+sub receiveClients {
+	my $self = shift;
+	#add to hash
+}
