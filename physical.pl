@@ -237,9 +237,9 @@ sub new {
 		}else{
 			print ("Opção invalida\n");
 		}
-	}while ($self->{isServer}<-1);
-
+	}while ($self->{isServer} == -1);
 	if ($self->{isServer}){
+		print ("\n\n");
 		my $so="$^O\n";
 		my $socketIp="127.0.0.1";
 		if(index($so, "linux") != -1) {
@@ -247,23 +247,27 @@ sub new {
 		}elsif(index($so,"Win") != -1){
 			$socketIp=Net::Address::IP::Local->public;
 		}
-		print "Starting server [ip:".$socketIp." port:".$port."]...\n";
+		print "Starting server [ip:".$socketIp." port:".$port."]...";
 		$self->{socket}=new IO::Socket::INET ( 
 			LocalHost => $socketIp,
 			LocalPort => $port,
 			Proto     => 'tcp',
-			# Listen    => 10,
+			Listen    => 10,
 			Reuse     => 1
-		)or die "Erro: $! \n";
+		)or die "\nErro: $! \n";
+		print ("OK\n");
 	}else{
 		print "Digite o ip do socket servidor: \n";
 		my $socketIp = <STDIN>;
 		chomp $socketIp;
+		print ("\n\n");
+		print "Connecting on server [ip:".$socketIp." port:".$port."]...";
 		$self->{socket}=new IO::Socket::INET (
 			PeerHost => $socketIp,
 			PeerPort => $port,
 			Proto    => 'tcp'
-		) or die "[Erro]$!\n";
+		) or die "\n[Erro]$!\n";
+		print ("OK\n");
 	}
 	
 
@@ -280,7 +284,7 @@ sub arp {
 	my $mac_int = 0;
 	my $offset=44;
 	for my $c (split //, $mac) {
-		if ($c ne ":"){
+		if (length $c && $c !~ tr/0-9A-Fa-f//c){
 			my $v = hex($c);
 			$mac_int=$mac_int|($v<<$offset);
 			$offset-=4;
@@ -387,7 +391,9 @@ sub backwardBit {
 
 	while (1){
 		if (!-e "bit_out.pdu"){
-			write_file("bit_out.pdu",$bit->toData(),"raw");
+			my $data=$bit->toData();
+			write_file("bit_out.pdu",$data,"raw");
+			last;
 		}
 	}
 	threads->exit();
@@ -398,14 +404,20 @@ sub receiveMessage {
 	
 	while (1) {
 		my $data=<$sock>;
-		my $bit=Bit->new_toReceive($data);
-		if ($bit->{dstAddr} == $self->{mac}){
-			$self->backwardBit($bit);
-		}else{
-			if ($self->{isServer}) {
-				if (exists $self->{sockets}{$bit->{dstAddr}}){
-					my $sk=$self->{sockets}{$bit->{dstAddr}};
-					print $sk "$data\n";
+		if(defined $data){
+			print ("-----------");
+			print ($data);
+			print ("-----------");
+			my $bit=Bit->new_toReceive($data);
+			if ($bit->{dstAddr} == $self->{mac}){
+				my $thread = threads->create(\&backwardBit,$self,$bit) or die "Erro ao propagar pacote para a camada de cima\n";
+				$thread->join();
+			}else{
+				if ($self->{isServer}) {
+					if (exists $self->{sockets}{$bit->{dstAddr}}){
+						my $sk=$self->{sockets}{$bit->{dstAddr}};
+						print $sk "$data\n";
+					}
 				}
 			}
 		}
@@ -415,14 +427,14 @@ sub receiveMessage {
 
 sub receiveClients {
 	my $self = shift;
-	
+	my $sk=$self->{socket};	
 	while (1) {
-		my $sk=$self->{socket};
-		my $client=$sk->accept();
-		my $client_mac=$self->arp($client->peeraddr);
-		$self->{sockets}{$client_mac}=$client;
-		my $thread = threads->create(\&receiveMessage,$self,$client) or die "Erro no recebimento\n";
-		$thread->join();
+		if (my $client=$sk->accept()){
+			my $client_mac=$self->arp($client->peerhost());
+			$self->{sockets}{$client_mac}=$client;
+			my $thread = threads->create(\&receiveMessage,$self,$client) or die "Erro no recebimento\n";
+			$thread->join();
+		}
 	}
 	threads->exit();
 }
@@ -433,9 +445,10 @@ sub run {
 	if ($self->{isServer}){
 		my $thread_rcvCli = threads->create(\&receiveClients,$self) or die "Erro no receber clientes\n";
 		$thread_rcvCli->join();
+	}else{
+		my $thread_rcvCli = threads->create(\&receiveMessage,$self,$self->{socket}) or die "Erro no recebimento\n";
+		$thread_rcvCli->join();
 	}
-	my $thread_bwBit = threads->create(\&backwardBit,$self) or die "Erro no propagar bit para camada de cima\n";
-	$thread_bwBit->join();
 	my $thread_fwBit = threads->create(\&forwardBit,$self) or die "Erro no propagar bit pela rede\n";
 	$thread_fwBit->join();
 	my $opt;
