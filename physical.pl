@@ -8,6 +8,8 @@ use IO::Socket::INET;
 use Time::HiRes('sleep');
 use Try::Tiny;
 use Net::Address::IP::Local;
+use threads;
+use threads::shared;
 
 sub fixStrSize {
 	my ($str,$size) = @_;
@@ -19,7 +21,7 @@ sub fixStrSize {
 	}
 }
 
-my %sockets;
+my %sockets  :shared={};
 
 package Bit;
 
@@ -373,7 +375,8 @@ sub write_file{
 }
 
 sub socketSend {
-	my ($self, $dst, $data) = @_;
+	my ($self, $dst, $data, $socketsref) = @_;
+	my %sks = %$socketsref;
 	print("Thread - Socket Send\n");
 	my ($colisao,$time); 
 	$colisao = int(rand(10)); 		# colisao se o numero for >= 4
@@ -384,12 +387,9 @@ sub socketSend {
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
 	if ($self->{isServer}) {
-		while (my ($key, $value) = each %sockets) {
-			print "$key: $value\n";
-		}
 		print("Enviando para: ".$dst."\n");
-		if (exists $sockets{$dst}){
-			my $sk=$sockets{$dst};
+		if (exists $sks{$dst}){
+			my $sk=$sks{$dst};
 			print $sk "$data\n";
 		}else{
 			print("Destinatário não existente\n");
@@ -412,7 +412,7 @@ sub forwardBit {
 			my $dstMAC=$self->arp($dstIP);
 			my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
 			my $bit_bin=Bit::toBin($bit);
-			Thread->new( sub { $self->socketSend($dstMAC,$bit_bin); } );
+			Thread->new( sub { $self->socketSend($dstMAC,$bit_bin,\%sockets); } );
 		}
 	}
 }
@@ -432,7 +432,8 @@ sub backwardBit {
 }
 
 sub receiveMessage {
-	my ($self,$sock) = @_;
+	my ($self,$sock,$socketsref) = @_;
+	my %sks = %$socketsref;
 	print ("Thread - Receive Message\n");
 	while (1) {
 		my $data=<$sock>;
@@ -445,8 +446,8 @@ sub receiveMessage {
 				Thread->new( sub { $self->backwardBit($bit); } );
 			}else{
 				if ($self->{isServer}) {
-					if (exists $sockets{$bit->{dstAddr}}){
-						my $sk=$sockets{$bit->{dstAddr}};
+					if (exists $sks{$bit->{dstAddr}}){
+						my $sk=$sks{$bit->{dstAddr}};
 						print $sk "$data\n";
 					}
 				}
@@ -457,7 +458,8 @@ sub receiveMessage {
 }
 
 sub receiveClients {
-	my $self = shift;
+	my ($self,$socketsref) = @_;
+	my %sks = %$socketsref;
 	my $sk=$self->{socket};	
 	print ("Thread - Receive Clients\n");
 	while (1) {
@@ -465,11 +467,8 @@ sub receiveClients {
 			my $client_mac=$self->arp($client->peerhost());
 			print($client->peerhost()."\n");
 			print($client_mac."\n");
-			$sockets{$client_mac}=$client;
-			while (my ($key, $value) = each %sockets) {
-				print "$key: $value\n";
-			}
-			Thread->new( sub { $self->receiveMessage($client); } );
+			$sks{$client_mac}=$client;
+			Thread->new( sub { $self->receiveMessage($client,$socketsref); } );
 		}
 	}
 	
@@ -480,9 +479,9 @@ sub run {
 	print ("Main Thread - Run\n");
 	Thread->new( sub { $self->forwardBit(); } );
 	if ($self->{isServer}){
-		Thread->new( sub { $self->receiveClients(); } );
+		Thread->new( sub { $self->receiveClients(\%sockets); } );
 	}else{
-		Thread->new( sub { $self->receiveMessage($self->{socket}); } );
+		Thread->new( sub { $self->receiveMessage($self->{socket},\%sockets); } );
 	}
 	my $opt;
 	do{
@@ -494,6 +493,9 @@ sub run {
 			exit 0;
 		}else{
 			print ("Opção invalida\n");
+		}
+		while (my ($key, $value) = each %sockets) {
+			print "$key: $value\n";
 		}
 	}while (1);
 }
