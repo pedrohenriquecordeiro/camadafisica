@@ -21,14 +21,13 @@ sub fixStrSize {
 	}
 }
 
-my %sockets  :shared={};
 
 package Bit;
 
 sub new {
 	my $class = @_;
 	my $self = {
-		preamble  => 170, # const 7 bytes
+		preamble  => 0b01010101, # const 7 bytes
 		startOfFrame => 0b10101011, # const 1 byte
 		scrAddr  => 0, # 6 bytes (MAC)
 		dstAddr  => 0, # 6 bytes (MAC)
@@ -58,37 +57,37 @@ sub new_toReceive {
 	FOR:for my $c (split //, $bit) {
 		my $v = ord($c);
 		if ($v==0){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
 		}elsif($v==1){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
 		}elsif($v==2){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
 		}elsif($v==3){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
 		}elsif($v==4){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
 		}elsif($v==5){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
 		}elsif($v==6){
-			if($v != 170){
+			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
@@ -164,7 +163,7 @@ sub toString {
 sub toBin {
 	my $self = shift;
 	my $bit="";
-	$bit.=chr($self->{preamble}>>48&0b11111111).chr($self->{preamble}>>40&0b11111111).chr($self->{preamble}>>32&0b11111111).chr($self->{preamble}>>24&0b11111111).chr($self->{preamble}>>16&0b11111111).chr($self->{preamble}>>8&0b11111111).chr($self->{preamble}&0b11111111);
+	$bit.=chr($self->{preamble}).chr($self->{preamble}).chr($self->{preamble}).chr($self->{preamble}).chr($self->{preamble}).chr($self->{preamble}).chr($self->{preamble});
 	$bit.=chr($self->{startOfFrame}&0b11111111);
 	$bit.=chr($self->{scrAddr}>>40&0b11111111).chr($self->{scrAddr}>>32&0b11111111).chr($self->{scrAddr}>>24&0b11111111).chr($self->{scrAddr}>>16&0b11111111).chr($self->{scrAddr}>>8&0b11111111).chr($self->{scrAddr}&0b11111111);
 	$bit.=chr($self->{dstAddr}>>40&0b11111111).chr($self->{dstAddr}>>32&0b11111111).chr($self->{dstAddr}>>24&0b11111111).chr($self->{dstAddr}>>16&0b11111111).chr($self->{dstAddr}>>8&0b11111111).chr($self->{dstAddr}&0b11111111);
@@ -202,7 +201,7 @@ sub new {
 	my %clientsockets;
 	my $self = {
 		mac  => $class->getMAC(),
-		sockets => %clientsockets,
+		sockets => {},
 		socket => 0,
 		isServer => -1,
 	};
@@ -375,8 +374,7 @@ sub write_file{
 }
 
 sub socketSend {
-	my ($self, $dst, $data, $socketsref) = @_;
-	my %sks = %$socketsref;
+	my ($self, $dst, $data) = @_;
 	print("Thread - Socket Send\n");
 	my ($colisao,$time); 
 	$colisao = int(rand(10)); 		# colisao se o numero for >= 4
@@ -387,9 +385,12 @@ sub socketSend {
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
 	if ($self->{isServer}) {
+		# while (my ($key, $value) = each %sockets) {
+		# 	print "$key: $value\n";
+		# }
 		print("Enviando para: ".$dst."\n");
-		if (exists $sks{$dst}){
-			my $sk=$sks{$dst};
+		if (exists $self->{sockets}{$dst}){
+			my $sk=$self->{sockets}{$dst};
 			print $sk "$data\n";
 		}else{
 			print("Destinatário não existente\n");
@@ -412,7 +413,7 @@ sub forwardBit {
 			my $dstMAC=$self->arp($dstIP);
 			my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
 			my $bit_bin=Bit::toBin($bit);
-			Thread->new( sub { $self->socketSend($dstMAC,$bit_bin,\%sockets); } );
+			Thread->new( sub { $self->socketSend($dstMAC,$bit_bin); } );
 		}
 	}
 }
@@ -432,8 +433,7 @@ sub backwardBit {
 }
 
 sub receiveMessage {
-	my ($self,$sock,$socketsref) = @_;
-	my %sks = %$socketsref;
+	my ($self,$sock) = @_;
 	print ("Thread - Receive Message\n");
 	while (1) {
 		my $data=<$sock>;
@@ -446,8 +446,8 @@ sub receiveMessage {
 				Thread->new( sub { $self->backwardBit($bit); } );
 			}else{
 				if ($self->{isServer}) {
-					if (exists $sks{$bit->{dstAddr}}){
-						my $sk=$sks{$bit->{dstAddr}};
+					if (exists $self->{sockets}{$bit->{dstAddr}}){
+						my $sk=$self->{sockets}{$bit->{dstAddr}};
 						print $sk "$data\n";
 					}
 				}
@@ -458,17 +458,24 @@ sub receiveMessage {
 }
 
 sub receiveClients {
-	my ($self,$socketsref) = @_;
-	my %sks = %$socketsref;
+	my $self = shift;
 	my $sk=$self->{socket};	
-	print ("Thread - Receive Clients\n");
+	print ("Recebendo clientes...\n");
+	print ("Digite a quantidade de clientes que irão conectar:\n");
+	my $line= <STDIN>;
+	chomp $line;
+	my $clients=$line+0;
+	my $cur_clients=0;
 	while (1) {
 		if (my $client=$sk->accept()){
 			my $client_mac=$self->arp($client->peerhost());
 			print($client->peerhost()."\n");
 			print($client_mac."\n");
-			$sks{$client_mac}=$client;
-			Thread->new( sub { $self->receiveMessage($client,$socketsref); } );
+			$self->{sockets}{$client_mac}=$client;
+			$cur_clients=$cur_clients+1;
+		}
+		if ($clients==$cur_clients){
+			last;
 		}
 	}
 	
@@ -477,11 +484,17 @@ sub receiveClients {
 sub run {
 	my $self = shift;
 	print ("Main Thread - Run\n");
-	Thread->new( sub { $self->forwardBit(); } );
 	if ($self->{isServer}){
-		Thread->new( sub { $self->receiveClients(\%sockets); } );
+		$self->receiveClients();
+		my %hash_sockts=$self->{sockets}->%*;
+		foreach my $key (keys %hash_sockts){
+			my $sk = $self->{sockets}{$key};
+		  	Thread->new( sub { $self->receiveMessage($sk); } );
+		}
+		Thread->new( sub { $self->forwardBit(); } );
 	}else{
-		Thread->new( sub { $self->receiveMessage($self->{socket},\%sockets); } );
+		Thread->new( sub { $self->receiveMessage($self->{socket}); } );
+		Thread->new( sub { $self->forwardBit(); } );
 	}
 	my $opt;
 	do{
@@ -494,9 +507,6 @@ sub run {
 		}else{
 			print ("Opção invalida\n");
 		}
-		while (my ($key, $value) = each %sockets) {
-			print "$key: $value\n";
-		}
 	}while (1);
 }
 
@@ -506,3 +516,4 @@ package Main;
 
 my $pl=PhysicalLayer->new();
 $pl->run();
+	
