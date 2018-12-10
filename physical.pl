@@ -2,7 +2,7 @@
 
 use 5.010;
 use strict;
-use threads;
+use Thread;
 use warnings;
 use IO::Socket::INET;
 use Time::HiRes('sleep');
@@ -24,7 +24,6 @@ package Bit;
 
 sub new {
 	my $class = @_;
-
 	my $self = {
 		preamble  => 170, # const 7 bytes
 		startOfFrame => 0b10101011, # const 1 byte
@@ -34,27 +33,23 @@ sub new {
 		data  => "", # 46 bytes <= data <= 1500 bytes
 		cyclicRCheck  => 0, # 4 bytes checksum
 	};
-
 	return bless $self, $class;
 }
 
 sub new_toSend {
 	my ($class, $scrAddr, $dstAddr, $data) = @_;
-
 	my $self = $class->new();
 	$self->{scrAddr} = $scrAddr; 
 	$self->{dstAddr} = $dstAddr;
 	$self->{data} = $data; 
 	$self->{length} = length($data)+(56+8+48+48+16+32);
 	genCheckSum();
-
 	return $self;
 }
 
 
 sub new_toReceive {
 	my ($class, $bit) = @_;
-
 	my $self = $class->new();
 	my $i=0;
 	FOR:for my $c (split //, $bit) {
@@ -144,7 +139,6 @@ sub new_toReceive {
 
 sub toString {
 	my $self = shift;
-
 	my $str=fixStrSize(sprintf("%b", $self->{preamble}), 8);
 	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
 	$str.=fixStrSize(sprintf("%b", $self->{preamble}), 8);
@@ -166,7 +160,6 @@ sub toString {
 
 sub toBin {
 	my $self = shift;
-
 	my $bit="";
 	$bit.=chr($self->{preamble}>>48&0b11111111).chr($self->{preamble}>>40&0b11111111).chr($self->{preamble}>>32&0b11111111).chr($self->{preamble}>>24&0b11111111).chr($self->{preamble}>>16&0b11111111).chr($self->{preamble}>>8&0b11111111).chr($self->{preamble}&0b11111111);
 	$bit.=chr($self->{startOfFrame}&0b11111111);
@@ -183,9 +176,7 @@ sub toBin {
 
 sub toData {
 	my $self = shift;
-
 	my $data=$self->{data};
-
 	return $data;
 }
 
@@ -205,7 +196,6 @@ package PhysicalLayer;
 
 sub new {
 	my ($class) = @_;
-
 	my $self = {
 		mac  => $class->getMAC(),
 		sockets => {},
@@ -267,33 +257,34 @@ sub new {
 		) or die "\n[Erro]$!\n";
 		print ("OK\n");
 	}
-	
-
 	return bless $self, $class;
 }
 
 sub arp {
 	my ($class, $ip) = @_;
-
 	my $mac = `arp -a $ip`;
 	if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
 		$mac=$1;
-	}
-	my $mac_int = 0;
-	my $offset=44;
-	for my $c (split //, $mac) {
-		if (length $c && $c !~ tr/0-9A-Fa-f//c){
-			my $v = hex($c);
-			$mac_int=$mac_int|($v<<$offset);
-			$offset-=4;
+		my $mac_int = 0;
+		my $offset=44;
+		for my $c (split //, $mac) {
+			if (length $c && $c !~ tr/0-9A-Fa-f//c){
+				my $v = hex($c);
+				$mac_int=$mac_int|($v<<$offset);
+				$offset-=4;
+			}
 		}
+		return $mac_int;
+	}else{
+		my @ip = split(/\./, $ip);
+		my $ip_dec=((@ip[3]+0))|((@ip[2]+0)<<8)|((@ip[1]+0)<<16)|((@ip[0]+0)<<24);
+		return $ip_dec;
 	}
-	return $mac_int;
+		
 }
 
 sub getMAC {
 	my $class = shift;
-
 	my $so =  "$^O\n";
 	my $mac;
 	if(index($so, "linux") != -1) {
@@ -320,7 +311,6 @@ sub getMAC {
 
 sub read_file{
 	my ($class, $file, $encoding) = @_;
-
 	my ($read, $data);
 	open($read, '<:'.$encoding, $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
 	$data= <$read>;
@@ -330,7 +320,6 @@ sub read_file{
 
 sub write_file{
 	my ($class, $file, $data, $encoding) = @_;
-
 	my $write;
 	try {
 		open($write, '>:'.$encoding, $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
@@ -341,10 +330,11 @@ sub write_file{
 
 sub socketSend {
 	my ($self, $dst, $data) = @_;
-	
+	print("Thread -  Socket Send\n");
 	my ($colisao,$time); 
 	$colisao = int(rand(10)); 		# colisao se o numero for >= 4
 	while($colisao le 4){ 			#ocorreu colisao
+		print("Colisao\n");
 		$time = int(rand(10)/10);
 		sleep($time); 				# espera um tempo aleatorio
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
@@ -354,6 +344,8 @@ sub socketSend {
 		if (exists $self->{sockets}{$dst}){
 			my $sk=$self->{sockets}{$dst};
 			print $sk "$data\n";
+		}else{
+			print("Destinatário não existente\n");
 		}
 	}else{
 		my $sk=$self->{socket};
@@ -364,6 +356,7 @@ sub socketSend {
 
 sub forwardBit {
 	my $self = shift;
+	print ("Thread - Forward Bit\n");
 	while (1){
 		# try{
 			if (-e "packet_out.pdu" && -e "routed_ip.zap"){
@@ -374,8 +367,8 @@ sub forwardBit {
 				my $dstMAC=$self->arp($dstIP);
 				my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
 				my $bit_bin=Bit::toBin($bit);
-				my $thread = threads->new(\&socketSend,$self,$dstMAC,$bit_bin) or die "Erro no envio\n";
-				$thread->join();
+				Thread->new( sub { $self->socketSend($dstMAC,$bit_bin); } );
+
 			}
 		# }catch{};
 	}
@@ -385,7 +378,7 @@ sub forwardBit {
 
 sub backwardBit {
 	my ($self,$bit) = @_;
-
+	print ("Thread - Backward Bit\n");
 	while (1){
 		if (!-e "bit_out.pdu"){
 			my $data=$bit->toData();
@@ -398,7 +391,7 @@ sub backwardBit {
 
 sub receiveMessage {
 	my ($self,$sock) = @_;
-	
+	print ("Thread - Receive Message\n");
 	while (1) {
 		my $data=<$sock>;
 		if(defined $data){
@@ -407,8 +400,7 @@ sub receiveMessage {
 			print ("-----------");
 			my $bit=Bit->new_toReceive($data);
 			if ($bit->{dstAddr} == $self->{mac}){
-				my $thread = threads->create(\&backwardBit,$self,$bit) or die "Erro ao propagar pacote para a camada de cima\n";
-				$thread->join();
+				Thread->new( sub { $self->backwardBit($bit); } );
 			}else{
 				if ($self->{isServer}) {
 					if (exists $self->{sockets}{$bit->{dstAddr}}){
@@ -425,12 +417,12 @@ sub receiveMessage {
 sub receiveClients {
 	my $self = shift;
 	my $sk=$self->{socket};	
+	print ("Thread - Receive Clients\n");
 	while (1) {
 		if (my $client=$sk->accept()){
 			my $client_mac=$self->arp($client->peerhost());
 			$self->{sockets}{$client_mac}=$client;
-			my $thread = threads->new(\&receiveMessage,$self,$client) or die "Erro no recebimento\n";
-			$thread->join();
+			Thread->new( sub { $self->receiveMessage($client); } );
 		}
 	}
 	
@@ -438,18 +430,13 @@ sub receiveClients {
 
 sub run {
 	my $self = shift;
-
-	my $thread_fwBit = threads->new(\&forwardBit,$self) or die "Erro no propagar bit pela rede\n";
-	$thread_fwBit->join();
-
+	print ("Main Thread - Run\n");
+	Thread->new( sub { $self->forwardBit(); } );
 	if ($self->{isServer}){
-		my $thread_rcvCli = threads->new(\&receiveClients,$self) or die "Erro no receber clientes\n";
-		$thread_rcvCli->join();
+		Thread->new( sub { $self->receiveClients(); } );
 	}else{
-		my $thread_rcvMsg = threads->new(\&receiveMessage,$self,$self->{socket}) or die "Erro no recebimento\n";
-		$thread_rcvMsg->join();
+		Thread->new( sub { $self->receiveMessage($self->{socket}); } );
 	}
-
 	my $opt;
 	do{
 		print ("Digite 'Q' para encerrar a aplicação\n");
