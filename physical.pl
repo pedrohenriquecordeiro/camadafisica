@@ -11,7 +11,6 @@ use Net::Address::IP::Local;
 
 sub fixStrSize {
 	my ($str,$size) = @_;
-
 	if ($size<=length($str)) {
 		return substr($str,length($str)-$size,$size);
 	}else{
@@ -188,7 +187,7 @@ sub genCheckSum {
 sub checkSum {
 	my $self = shift;
 	# TODO implement
-	return 0;
+	return 1;
 }
 
 
@@ -285,7 +284,7 @@ sub arp {
 
 sub getMAC {
 	my $class = shift;
-	my $so =  "$^O\n";
+	my $so = "$^O\n";
 	my $mac;
 	if(index($so, "linux") != -1) {
 		$mac = substr `cat /sys/class/net/*/address`,0,17;
@@ -321,11 +320,9 @@ sub read_file{
 sub write_file{
 	my ($class, $file, $data, $encoding) = @_;
 	my $write;
-	try {
-		open($write, '>:'.$encoding, $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
-		print $write "$data\n";
-		close $write;
-	} catch {};
+	open($write, '>:'.$encoding, $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
+	print $write "$data\n";
+	close $write;
 }
 
 sub socketSend {
@@ -339,7 +336,6 @@ sub socketSend {
 		sleep($time); 				# espera um tempo aleatorio
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
-
 	if ($self->{isServer}) {
 		if (exists $self->{sockets}{$dst}){
 			my $sk=$self->{sockets}{$dst};
@@ -351,28 +347,23 @@ sub socketSend {
 		my $sk=$self->{socket};
 		print $sk "$data\n";
 	}
-	
 }
 
 sub forwardBit {
 	my $self = shift;
 	print ("Thread - Forward Bit\n");
 	while (1){
-		# try{
-			if (-e "packet_out.pdu" && -e "routed_ip.zap"){
-				my $dstIP=$self->read_file("routed_ip.zap","encoding(UTF-8)");
-				my $packet=$self->read_file("packet_out.pdu","raw");
-				unlink "routed_ip.zap";
-				unlink "packet_out.pdu";
-				my $dstMAC=$self->arp($dstIP);
-				my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
-				my $bit_bin=Bit::toBin($bit);
-				Thread->new( sub { $self->socketSend($dstMAC,$bit_bin); } );
-
-			}
-		# }catch{};
+		if (-e "packet_out.pdu" && -e "routed_ip.zap"){
+			my $dstIP=$self->read_file("routed_ip.zap","encoding(UTF-8)");
+			my $packet=$self->read_file("packet_out.pdu","raw");
+			unlink "routed_ip.zap";
+			unlink "packet_out.pdu";
+			my $dstMAC=$self->arp($dstIP);
+			my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
+			my $bit_bin=Bit::toBin($bit);
+			Thread->new( sub { $self->socketSend($dstMAC,$bit_bin); } );
+		}
 	}
-	
 }
 
 
