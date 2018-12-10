@@ -323,6 +323,7 @@ sub arp {
 		return $mac_int;
 	}else{
 		# TODO error
+		print("Error, could not detect MAC address, using IP...\n");
 		my @ip_arr = split(/\./, $ip);
 		my $ip_dec=(($ip_arr[3]+0))|(($ip_arr[2]+0)<<8)|(($ip_arr[1]+0)<<16)|(($ip_arr[0]+0)<<24);
 		return $ip_dec;
