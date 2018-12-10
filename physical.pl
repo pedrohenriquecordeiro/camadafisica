@@ -46,7 +46,7 @@ sub new_toSend {
 	$self->{dstAddr} = $dstAddr;
 	$self->{data} = $data; 
 	$self->{length} = length($data)+(56+8+48+48+16+32);
-	$self->genCheckSum();
+	genCheckSum();
 
 	return $self;
 }
@@ -173,7 +173,7 @@ sub toBin {
 	$bit.=chr($self->{scrAddr}>>40&0b11111111).chr($self->{scrAddr}>>32&0b11111111).chr($self->{scrAddr}>>24&0b11111111).chr($self->{scrAddr}>>16&0b11111111).chr($self->{scrAddr}>>8&0b11111111).chr($self->{scrAddr}&0b11111111);
 	$bit.=chr($self->{dstAddr}>>40&0b11111111).chr($self->{dstAddr}>>32&0b11111111).chr($self->{dstAddr}>>24&0b11111111).chr($self->{dstAddr}>>16&0b11111111).chr($self->{dstAddr}>>8&0b11111111).chr($self->{dstAddr}&0b11111111);
 	$bit.=chr($self->{length}>>8&0b11111111).chr($self->{length}&0b11111111);
-	$bit.=chr($self->{data});
+	$bit.=$self->{data};
 	$bit.=chr($self->{cyclicRCheck}>>24&0b11111111).chr($self->{cyclicRCheck}>>16&0b11111111).chr($self->{cyclicRCheck}>>8&0b11111111).chr($self->{cyclicRCheck}&0b11111111);
 	if (length($self->{data})<48){
 		$bit.= chr(0)x(48-length($self->{data}));
@@ -190,7 +190,7 @@ sub toData {
 }
 
 sub genCheckSum {
-	my $self = shift;
+	# my $self = shift;
 	# TODO implement
 }
 
@@ -199,8 +199,6 @@ sub checkSum {
 	# TODO implement
 	return 0;
 }
-
-1;
 
 
 package PhysicalLayer;
@@ -324,11 +322,9 @@ sub read_file{
 	my ($class, $file, $encoding) = @_;
 
 	my ($read, $data);
-	try {
-		open($read, '<:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
-		$data= <$read>;
-		close $read;
-	} catch {};
+	open($read, '<:'.$encoding, $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
+	$data= <$read>;
+	close $read;
 	return $data;
 }
 
@@ -337,7 +333,7 @@ sub write_file{
 
 	my $write;
 	try {
-		open($write, '>:$encoding', $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
+		open($write, '>:'.$encoding, $file) or die "[ERRO]Nao foi possivel abrir o arquivo '$file' $!\n";
 		print $write "$data\n";
 		close $write;
 	} catch {};
@@ -363,13 +359,13 @@ sub socketSend {
 		my $sk=$self->{socket};
 		print $sk "$data\n";
 	}
-	threads->exit();
+	
 }
 
 sub forwardBit {
 	my $self = shift;
 	while (1){
-		try{
+		# try{
 			if (-e "packet_out.pdu" && -e "routed_ip.zap"){
 				my $dstIP=$self->read_file("routed_ip.zap","encoding(UTF-8)");
 				my $packet=$self->read_file("packet_out.pdu","raw");
@@ -377,12 +373,13 @@ sub forwardBit {
 				unlink "packet_out.pdu";
 				my $dstMAC=$self->arp($dstIP);
 				my $bit=Bit->new_toSend($self->{mac}, $dstMAC, $packet);
-				my $thread = threads->create(\&socketSend,$self,$dstMAC,$bit->toBin()) or die "Erro no envio\n";
+				my $bit_bin=Bit::toBin($bit);
+				my $thread = threads->new(\&socketSend,$self,$dstMAC,$bit_bin) or die "Erro no envio\n";
 				$thread->join();
 			}
-		}catch{};
+		# }catch{};
 	}
-	threads->exit();
+	
 }
 
 
@@ -396,7 +393,7 @@ sub backwardBit {
 			last;
 		}
 	}
-	threads->exit();
+	
 }
 
 sub receiveMessage {
@@ -422,7 +419,7 @@ sub receiveMessage {
 			}
 		}
 	}
-	threads->exit();
+	
 }
 
 sub receiveClients {
@@ -432,25 +429,27 @@ sub receiveClients {
 		if (my $client=$sk->accept()){
 			my $client_mac=$self->arp($client->peerhost());
 			$self->{sockets}{$client_mac}=$client;
-			my $thread = threads->create(\&receiveMessage,$self,$client) or die "Erro no recebimento\n";
+			my $thread = threads->new(\&receiveMessage,$self,$client) or die "Erro no recebimento\n";
 			$thread->join();
 		}
 	}
-	threads->exit();
+	
 }
 
 sub run {
 	my $self = shift;
 
+	my $thread_fwBit = threads->new(\&forwardBit,$self) or die "Erro no propagar bit pela rede\n";
+	$thread_fwBit->join();
+
 	if ($self->{isServer}){
-		my $thread_rcvCli = threads->create(\&receiveClients,$self) or die "Erro no receber clientes\n";
+		my $thread_rcvCli = threads->new(\&receiveClients,$self) or die "Erro no receber clientes\n";
 		$thread_rcvCli->join();
 	}else{
-		my $thread_rcvCli = threads->create(\&receiveMessage,$self,$self->{socket}) or die "Erro no recebimento\n";
-		$thread_rcvCli->join();
+		my $thread_rcvMsg = threads->new(\&receiveMessage,$self,$self->{socket}) or die "Erro no recebimento\n";
+		$thread_rcvMsg->join();
 	}
-	my $thread_fwBit = threads->create(\&forwardBit,$self) or die "Erro no propagar bit pela rede\n";
-	$thread_fwBit->join();
+
 	my $opt;
 	do{
 		print ("Digite 'Q' para encerrar a aplicação\n");
@@ -465,11 +464,9 @@ sub run {
 	}while (1);
 }
 
-1;
+
 
 package Main;
 
 my $pl=PhysicalLayer->new();
 $pl->run();
-
-1;
