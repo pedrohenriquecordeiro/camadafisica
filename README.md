@@ -45,6 +45,7 @@ Instale os pacotes necessários, através dos comandos:
     install IO::Socket::INET
     install Time::HiRes
     install Net::Address::IP::Local
+    install Try::Tiny
 
 
 Para executar basta rodar os comandos:
