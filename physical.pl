@@ -19,6 +19,8 @@ sub fixStrSize {
 	}
 }
 
+my %sockets;
+
 package Bit;
 
 sub new {
@@ -195,9 +197,10 @@ package PhysicalLayer;
 
 sub new {
 	my ($class) = @_;
+	my %clientsockets;
 	my $self = {
 		mac  => $class->getMAC(),
-		sockets => {},
+		sockets => %clientsockets,
 		socket => 0,
 		isServer => -1,
 	};
@@ -381,13 +384,12 @@ sub socketSend {
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
 	if ($self->{isServer}) {
-		my %clients=$self->{sockets}->%*;
-		for my $fruit (keys %clients) {
-			print "The mac of '$fruit' is $clients{$fruit}\n";
+		while (my ($key, $value) = each %sockets) {
+			print "$key: $value\n";
 		}
 		print("Enviando para: ".$dst."\n");
-		if (exists $clients{$dst}){
-			my $sk=$clients{$dst};
+		if (exists $sockets{$dst}){
+			my $sk=$sockets{$dst};
 			print $sk "$data\n";
 		}else{
 			print("Destinatário não existente\n");
@@ -443,12 +445,8 @@ sub receiveMessage {
 				Thread->new( sub { $self->backwardBit($bit); } );
 			}else{
 				if ($self->{isServer}) {
-					my %clients=$self->{sockets}->%*;
-					for my $fruit (keys %clients) {
-						print "The mac of '$fruit' is $clients{$fruit}\n";
-					}
-					if (exists $clients{$bit->{dstAddr}}){
-						my $sk=$clients{$bit->{dstAddr}};
+					if (exists $sockets{$bit->{dstAddr}}){
+						my $sk=$sockets{$bit->{dstAddr}};
 						print $sk "$data\n";
 					}
 				}
@@ -467,13 +465,11 @@ sub receiveClients {
 			my $client_mac=$self->arp($client->peerhost());
 			print($client->peerhost()."\n");
 			print($client_mac."\n");
-			my %clients=$self->{sockets}->%*;
-			$clients{$client_mac}=$client;
-
-			Thread->new( sub { $self->receiveMessage($client); } );
-			for my $fruit (keys %clients) {
-				print "The mac of '$fruit' is $clients{$fruit}\n";
+			$sockets{$client_mac}=$client;
+			while (my ($key, $value) = each %sockets) {
+				print "$key: $value\n";
 			}
+			Thread->new( sub { $self->receiveMessage($client); } );
 		}
 	}
 	
