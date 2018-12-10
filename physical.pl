@@ -295,10 +295,15 @@ sub arp {
 
 sub getMAC {
 	my $class = shift;
+	my $IsWifi = 1;
 	my $so = "$^O\n";
 	my $mac;
 	if(index($so, "linux") != -1) {
-		$mac = substr `cat /sys/class/net/*/address`,0,17;
+		if($IsWifi){
+			$mac = substr `cat /sys/class/net/*/address`,35,51;
+		}else{
+			$mac = substr `cat /sys/class/net/*/address`,0,17;
+		}
 	}elsif(index($so,"Win") != -1){
 		$mac = `getmac`;
 		if($mac =~ m/(\w\w-\w\w-\w\w-\w\w-\w\w-\w\w) | (\w\w:\w\w:\w\w:\w\w:\w\w:\w\w) /){
