@@ -407,6 +407,9 @@ sub receiveMessage {
 						my $sk=$self->{sockets}{$bit->{dstAddr}};
 						print $sk "$data\n";
 					}
+				}else{
+					# TODO error
+					print("Sended to: $bit->{dstAddr} - expected to: $self->{mac}\n")
 				}
 			}
 		}
