@@ -56,70 +56,70 @@ sub new_toReceive {
 	my $i=0;
 	FOR:for my $c (split //, $bit) {
 		my $v = ord($c);
-		if ($v==0){
+		if ($i==0){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==1){
+		}elsif($i==1){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==2){
+		}elsif($i==2){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==3){
+		}elsif($i==3){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==4){
+		}elsif($i==4){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==5){
+		}elsif($i==5){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==6){
+		}elsif($i==6){
 			if($v != $self->{preamble}){
 				# TODO error
 				print ("Invalid header (preamble)\n");
 			}
-		}elsif($v==7){
+		}elsif($i==7){
 			$self->{startOfFrame}=$v;
-		}elsif($v==8){
+		}elsif($i==8){
 			$self->{scrAddr}=$v<<40;
-		}elsif($v==9){
+		}elsif($i==9){
 			$self->{scrAddr}=$self->{scrAddr}|($v<<32);
-		}elsif($v==10){
+		}elsif($i==10){
 			$self->{scrAddr}=$self->{scrAddr}|($v<<24);
-		}elsif($v==11){
+		}elsif($i==11){
 			$self->{scrAddr}=$self->{scrAddr}|($v<<16);
-		}elsif($v==12){
+		}elsif($i==12){
 			$self->{scrAddr}=$self->{scrAddr}|($v<<8);
-		}elsif($v==13){
+		}elsif($i==13){
 			$self->{scrAddr}=$self->{scrAddr}|$v;
-		}elsif($v==14){
+		}elsif($i==14){
 			$self->{dstAddr}=$v<<40;
-		}elsif($v==15){
+		}elsif($i==15){
 			$self->{dstAddr}=$self->{dstAddr}|($v<<32);
-		}elsif($v==16){
+		}elsif($i==16){
 			$self->{dstAddr}=$self->{dstAddr}|($v<<24);
-		}elsif($v==17){
+		}elsif($i==17){
 			$self->{dstAddr}=$self->{dstAddr}|($v<<16);
-		}elsif($v==18){
+		}elsif($i==18){
 			$self->{dstAddr}=$self->{dstAddr}|($v<<8);
-		}elsif($v==19){
+		}elsif($i==19){
 			$self->{dstAddr}=$self->{dstAddr}|$v;
-		}elsif($v==20){
+		}elsif($i==20){
 			$self->{length}=$v<<8;
-		}elsif($v==21){
+		}elsif($i==21){
 			$self->{length}=$self->{length}|$v;
 			my $datasize=$self->{length}-(56+8+48+48+16+32);
 			$self->{data}=substr($bit,22,$datasize);
@@ -127,13 +127,13 @@ sub new_toReceive {
 			last FOR;
 		}else{
 			# TODO error
-			print ("Invalid header");
+			print ("Invalid header\n");
 		}
 		$i++;
 	}
 	if (!Bit::checkSum($self)){
 		# TODO error
-		print ("Invalid checksum");
+		print ("Invalid checksum\n");
 	}
 	return $self;
 }
@@ -385,9 +385,6 @@ sub socketSend {
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
 	if ($self->{isServer}) {
-		# while (my ($key, $value) = each %sockets) {
-		# 	print "$key: $value\n";
-		# }
 		print("Enviando para: ".$dst."\n");
 		if (exists $self->{sockets}{$dst}){
 			my $sk=$self->{sockets}{$dst};
