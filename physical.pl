@@ -435,9 +435,9 @@ sub receiveMessage {
 	while (1) {
 		my $data=<$sock>;
 		if(defined $data){
-			print ("-----------");
-			print ($data);
-			print ("-----------");
+			print ("-----------\n");
+			print ("$data\n");
+			print ("-----------\n");
 			my $bit=Bit->new_toReceive($data);
 			if ($bit->{dstAddr} == $self->{mac}){
 				Thread->new( sub { $self->backwardBit($bit); } );
