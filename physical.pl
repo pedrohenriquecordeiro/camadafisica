@@ -275,8 +275,8 @@ sub arp {
 		}
 		return $mac_int;
 	}else{
-		my @ip = split(/\./, $ip);
-		my $ip_dec=((@ip[3]+0))|((@ip[2]+0)<<8)|((@ip[1]+0)<<16)|((@ip[0]+0)<<24);
+		my @ip_arr = split(/\./, $ip);
+		my $ip_dec=(($ip_arr[3]+0))|(($ip_arr[2]+0)<<8)|(($ip_arr[1]+0)<<16)|(($ip_arr[0]+0)<<24);
 		return $ip_dec;
 	}
 		
