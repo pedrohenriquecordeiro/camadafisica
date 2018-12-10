@@ -348,7 +348,7 @@ sub getMAC {
 	my $mac_int = 0;
 	my $offset=44;
 	for my $c (split //, $mac) {
-		if ($c ne ":"){
+		if (length $c && $c !~ tr/0-9A-Fa-f//c){
 			my $v = hex($c);
 			$mac_int=$mac_int|($v<<$offset);
 			$offset-=4;
