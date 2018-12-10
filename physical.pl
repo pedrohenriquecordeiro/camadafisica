@@ -265,52 +265,14 @@ sub new {
 
 sub arp {
 	my ($class, $ip) = @_;
-	my $re1='((?:[a-z][a-z]+))';	# Word 1
-	my $re2='(-)';	# Any Single Character 1
-	my $re3='(\\d+)';	# Integer Number 1
-	my $re4='(\\.)';	# Any Single Character 2
-	my $re5='((?:[a-z][a-z]+))';	# Word 2
-	my $re6='(\\s+)';	# White Space 1
-	my $re7='(\\()';	# Any Single Character 3
-	my $re8='((?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?))(?![\\d])';	# IPv4 IP Address 1
-	my $re9='(\\))';	# Any Single Character 4
-	my $re10='(\\s+)';	# White Space 2
-	my $re11='(at)';	# Word 3
-	my $re12='(\\s+)';	# White Space 3
-	my $re13='((?:[0-9A-F][0-9A-F]:){5}(?:[0-9A-F][0-9A-F]))(?![:0-9A-F])';	# Mac Address 1
-	my $re14='(\\s+)';	# White Space 4
-	my $re15='(\\[)';	# Any Single Character 5
-	my $re16='((?:[a-z][a-z]+))';	# Word 4
-	my $re17='(\\])';	# Any Single Character 6
-	my $re18='(\\s+)';	# White Space 5
-	my$re19='(on)';	# Word 5
-	my $re20='(\\s+)';	# White Space 6
-	my$re21='((?:[a-z][a-z]*[0-9]+[a-z0-9]*))';	# Alphanum 1
+	my $re1='.*?';	# Non-greedy match on filler
+	my $re2='((?:[0-9A-Fa-f][0-9A-Fa-f]:){5}(?:[0-9A-Fa-f][0-9A-Fa-f]))(?![:0-9A-Fa-f])';	# Mac Address 1
+	my $re3='.*?';	# Non-greedy match on filler
 
-	my $re=$re1.$re2.$re3.$re4.$re5.$re6.$re7.$re8.$re9.$re10.$re11.$re12.$re13.$re14.$re15.$re16.$re17.$re18.$re19.$re20.$re21;
+	my $re=$re1.$re2.$re3;
 	my $mac_raw = `arp -a $ip`;
 	if ($mac_raw =~ m/$re/is){
-		my $word1=$1;
-		my$c1=$2;
-		my $int1=$3;
-		my $c2=$4;
-		my $word2=$5;
-		my $ws1=$6;
-		my $c3=$7;
-		my $ipaddress1=$8;
-		my $c4=$9;
-		my $ws2=$10;
-		my $word3=$11;
-		my $ws3=$12;
-		my $mac=$13;
-		my $ws4=$14;
-		my $c5=$15;
-		my $word4=$16;
-		my $c6=$17;
-		my $ws5=$18;
-		my $word5=$19;
-		my $ws6=$20;
-		my $alphanum1=$21;
+		my $mac=$1;
 		my $mac_int = 0;
 		my $offset=44;
 		for my $c (split //, $mac) {
@@ -436,9 +398,6 @@ sub receiveMessage {
 	while (1) {
 		my $data=<$sock>;
 		if(defined $data){
-			print ("-----------\n");
-			print ("$data\n");
-			print ("-----------\n");
 			my $bit=Bit->new_toReceive($data);
 			if ($bit->{dstAddr} == $self->{mac}){
 				Thread->new( sub { $self->backwardBit($bit); } );
