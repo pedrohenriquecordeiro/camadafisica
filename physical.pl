@@ -389,8 +389,8 @@ sub backwardBit {
 	print ("Thread - Backward Bit\n");
 	while (1){
 		if (!-e "bit_out.pdu"){
-			my $data=$bit->toData();
-			write_file("bit_out.pdu",$data,"raw");
+			my $data=Bit::toData($bit);
+			$self->write_file("bit_out.pdu",$data,"raw");
 			last;
 		}
 	}
