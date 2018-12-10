@@ -128,7 +128,7 @@ sub new_toReceive {
 		}
 		$i++;
 	}
-	if (!$self->checkSum()){
+	if (!Bit::checkSum($self)){
 		# TODO error
 		print ("Invalid checksum");
 	}
@@ -371,7 +371,7 @@ sub write_file{
 
 sub socketSend {
 	my ($self, $dst, $data) = @_;
-	print("Thread -  Socket Send\n");
+	print("Thread - Socket Send\n");
 	my ($colisao,$time); 
 	$colisao = int(rand(10)); 		# colisao se o numero for >= 4
 	while($colisao le 4){ 			#ocorreu colisao
@@ -381,8 +381,13 @@ sub socketSend {
 		$colisao = int(rand(10));	#calcula se vai ocorrer outra colisao
 	}	
 	if ($self->{isServer}) {
-		if (exists $self->{sockets}{$dst}){
-			my $sk=$self->{sockets}{$dst};
+		my %clients=$self->{sockets}->%*;
+		for my $fruit (keys %clients) {
+			print "The mac of '$fruit' is $clients{$fruit}\n";
+		}
+		print("Enviando para: ".$dst."\n");
+		if (exists $clients{$dst}){
+			my $sk=$clients{$dst};
 			print $sk "$data\n";
 		}else{
 			print("Destinatário não existente\n");
@@ -438,8 +443,12 @@ sub receiveMessage {
 				Thread->new( sub { $self->backwardBit($bit); } );
 			}else{
 				if ($self->{isServer}) {
-					if (exists $self->{sockets}{$bit->{dstAddr}}){
-						my $sk=$self->{sockets}{$bit->{dstAddr}};
+					my %clients=$self->{sockets}->%*;
+					for my $fruit (keys %clients) {
+						print "The mac of '$fruit' is $clients{$fruit}\n";
+					}
+					if (exists $clients{$bit->{dstAddr}}){
+						my $sk=$clients{$bit->{dstAddr}};
 						print $sk "$data\n";
 					}
 				}
@@ -456,8 +465,15 @@ sub receiveClients {
 	while (1) {
 		if (my $client=$sk->accept()){
 			my $client_mac=$self->arp($client->peerhost());
-			$self->{sockets}{$client_mac}=$client;
+			print($client->peerhost()."\n");
+			print($client_mac."\n");
+			my %clients=$self->{sockets}->%*;
+			$clients{$client_mac}=$client;
+
 			Thread->new( sub { $self->receiveMessage($client); } );
+			for my $fruit (keys %clients) {
+				print "The mac of '$fruit' is $clients{$fruit}\n";
+			}
 		}
 	}
 	
