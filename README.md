@@ -50,5 +50,6 @@ Instale os pacotes necessários, através dos comandos:
 
 Para executar basta rodar os comandos:
 ```
-	perl physical.pl
+    sudo perl physical.pl   # executar como servidor
+	perl physical.pl        # executar como cliente
 ```
